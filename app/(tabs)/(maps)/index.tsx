@@ -1,9 +1,10 @@
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Foundation from '@expo/vector-icons/Foundation';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 
-export default function MapScreen() {
+export default function MapsScreen() {
   return (
     <View style={styles.container} className='relative'>
       <MapView
@@ -48,14 +49,16 @@ export default function MapScreen() {
           <View className="flex-row items-center justify-between mt-6">
             <Pressable
               onPress={() => console.log('제보하기')}
-              className="flex-1 bg-orange-500 py-3 rounded-lg mr-2"
+              className="flex-1 flex-row items-center justify-center bg-orange-500 py-3 rounded-lg mr-2"
             >
-              <Text className="text-white text-lg font-bold text-center">제보하기</Text>
+              <Ionicons name="people" size={17} color="white" />
+              <Text className='text-sm text-white font-semibold ml-[1px]'>3</Text>
+              <Text className="text-white text-lg font-bold text-center ml-2">제보하기</Text>
               {/* 여러명 있는듯한 느낌으로 프사 여러개 */}
             </Pressable>
             <Pressable
               onPress={() => console.log('상세정보')}
-              className="flex-1 bg-neutral-600 py-3 rounded-lg ml-2"
+              className="flex-1 bg-slate-700 py-3 rounded-lg ml-2"
             >
               <Text className="text-white text-lg font-bold text-center">상세정보</Text>
             </Pressable>
