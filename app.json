@@ -10,14 +10,22 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.devscarycat.pethero-native"
+      "bundleIdentifier": "com.devscarycat.pethero-native",
+      "config": {
+        "googleMapsApiKey": "AIzaSyBzTrs__nZlSl9jkHUHqNLg3atH7-yEx6A"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBzTrs__nZlSl9jkHUHqNLg3atH7-yEx6A"
+        }
+      }
     },
     "web": {
       "bundler": "metro",
@@ -33,13 +41,6 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
-        }
-      ],
-      [
-        "react-native-maps",
-        {
-          "iosGoogleMapsApiKey": "AIzaSyBzTrs__nZlSl9jkHUHqNLg3atH7-yEx6A",
-          "androidGoogleMapsApiKey": "AIzaSyBzTrs__nZlSl9jkHUHqNLg3atH7-yEx6A"
         }
       ]
     ],
