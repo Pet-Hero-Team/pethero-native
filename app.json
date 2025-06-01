@@ -42,6 +42,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "앱 사용 중 위치 접근을 허용하시겠습니까?"
+        }
       ]
     ],
     "experiments": {
