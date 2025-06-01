@@ -68,7 +68,7 @@ export default function MapsScreen() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // 나중에 실 데이터 넣어야함
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         const mockData: Item = {
           id: '1',
           title: '라이',
@@ -182,7 +182,7 @@ export default function MapsScreen() {
     return currentSnapIndex === 0 ? minContent : mainContent;
   };
 
-  // 내 위치로 이동
+
   const moveToUserLocation = async () => {
     if (userLocation && mapRef.current) {
       mapRef.current.animateToRegion({
@@ -196,34 +196,44 @@ export default function MapsScreen() {
     }
   };
 
+
+  const renderHandle = useCallback(() => {
+    return (
+      <View style={styles.handleContainer}>
+        <View style={styles.handleIndicator} />
+        <Pressable
+          onPress={moveToUserLocation}
+          style={styles.locationButton}
+          className="absolute right-4 bg-white p-2 rounded-full shadow-lg"
+        >
+          <MaterialIcons name="my-location" size={24} color="black" />
+        </Pressable>
+      </View>
+    );
+  }, [moveToUserLocation]);
+
   return (
     <View style={styles.container} className="relative">
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
-        showsUserLocation={true} // 사용자 위치 표시
+        showsUserLocation={true}
         region={{
-          latitude: userLocation?.latitude || 37.78825,
-          longitude: userLocation?.longitude || -122.4324,
+          latitude: userLocation?.latitude || 37.5665,
+          longitude: userLocation?.longitude || 126.9780,
           latitudeDelta: 0.015,
           longitudeDelta: 0.0121,
         }}
       />
-      <Pressable
-        onPress={moveToUserLocation}
-        style={styles.locationButton}
-        className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-lg"
-      >
-        <MaterialIcons name="my-location" size={24} color="black" />
-      </Pressable>
       <BottomSheet
         ref={bottomSheetRef}
         index={0}
         snapPoints={snapPoints}
         onChange={handleSheetChanges}
         enablePanDownToClose={false}
-        handleIndicatorStyle={{ backgroundColor: '#d1d5db', width: 44, height: 5 }}
+        handleComponent={renderHandle}
+        handleIndicatorStyle={{ display: 'none' }}
         backgroundStyle={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
         containerStyle={{ zIndex: 2000 }}
         animationConfigs={{
@@ -256,7 +266,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  handleContainer: {
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  handleIndicator: {
+    backgroundColor: '#d1d5db',
+    width: 44,
+    height: 5,
+    borderRadius: 2.5,
+    marginTop: 8,
+  },
   locationButton: {
     zIndex: 3000,
+    top: -50,
   },
 });
