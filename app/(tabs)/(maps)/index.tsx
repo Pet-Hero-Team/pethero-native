@@ -1,13 +1,13 @@
+import AntDesign from '@expo/vector-icons/AntDesign';
 import Fontisto from '@expo/vector-icons/Fontisto';
-import Foundation from '@expo/vector-icons/Foundation';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import { Dimensions, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -31,17 +31,23 @@ export default function MapsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isMapMoved, setIsMapMoved] = useState(false);
+  const [isInitialRegionSet, setIsInitialRegionSet] = useState(false);
+  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
 
-  const snapPoints = useMemo(() => [60, 300, 600], []);
-
-  console.log('Snap Points:', snapPoints);
-  console.log('Screen Height:', SCREEN_HEIGHT);
-  console.log('Tab Bar Height:', tabBarHeight);
+  const snapPoints = useMemo(() => [60, 300, 620], []);
 
   const handleSheetChanges = useCallback((index: number) => {
-    console.log('BottomSheet snap index:', index);
-    setCurrentSnapIndex(index);
-  }, []);
+    if (index >= 0 && index < snapPoints.length) {
+      setCurrentSnapIndex(index);
+    } else {
+      console.warn('Invalid snap index:', index, 'Reverting to index 0');
+      setCurrentSnapIndex(0);
+      if (bottomSheetRef.current) {
+        bottomSheetRef.current.snapToIndex(0);
+      }
+    }
+  }, [snapPoints]);
 
   useEffect(() => {
     (async () => {
@@ -130,51 +136,7 @@ export default function MapsScreen() {
     }
 
     return (
-      <View className="px-6 pb-6">
-        <View className="flex-row justify-between items-center w-full">
-          <View>
-            <View className="flex-row items-center">
-              <Text className="text-xl text-neutral-800 font-bold mr-1">{item.title}</Text>
-              <Foundation
-                name={item.gender === 'female' ? 'female-symbol' : 'male-symbol'}
-                size={17}
-                color="#ef4444"
-              />
-            </View>
-            <View className="flex-row items-center mt-1">
-              <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-              <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
-            </View>
-            <Text className="font-semibold text-lg text-neutral-800 mt-1">
-              {item.price.toLocaleString('ko-KR')}₩
-            </Text>
-            <Text className="text-xs text-neutral-500 mt-2">
-              {item.distance} · {item.area}
-            </Text>
-          </View>
-          <Image
-            source={{ uri: item.imageUrl }}
-            className="w-24 h-24 rounded-lg"
-            onLoad={() => console.log('Image loaded')}
-          />
-        </View>
-        <View className="flex-row items-center justify-between mt-6">
-          <Pressable
-            onPress={() => console.log('제보하기')}
-            className="flex-1 flex-row items-center justify-center bg-orange-500 py-3 rounded-lg mr-2"
-          >
-            <Ionicons name="people" size={17} color="white" />
-            <Text className="text-sm text-white font-semibold ml-[1px]">3</Text>
-            <Text className="text-white text-lg font-bold text-center ml-2">제보하기</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => console.log('상세정보')}
-            className="flex-1 bg-slate-700 py-3 rounded-lg ml-2"
-          >
-            <Text className="text-white text-lg font-bold text-center">상세정보</Text>
-          </Pressable>
-        </View>
-      </View>
+      <Text>hi</Text>
     );
   }, [item, loading, error]);
 
@@ -182,38 +144,99 @@ export default function MapsScreen() {
     return currentSnapIndex === 0 ? minContent : mainContent;
   };
 
-
   const moveToUserLocation = async () => {
     if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion({
+      const currentRegionData = currentRegion || {
         latitude: userLocation.latitude,
         longitude: userLocation.longitude,
         latitudeDelta: 0.015,
         longitudeDelta: 0.0121,
-      }, 1000);
+      };
+
+      mapRef.current.animateToRegion({
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: currentRegionData.latitudeDelta,
+        longitudeDelta: currentRegionData.longitudeDelta,
+      }, 350);
     } else {
       console.log('위치 정보를 사용할 수 없습니다.');
     }
   };
 
+  const handleRegionChange = useCallback((region: Region) => {
+    setCurrentRegion(region);
+  }, []);
+
+  const handleRegionChangeComplete = useCallback((region: Region) => {
+    setCurrentRegion(region);
+    if (isInitialRegionSet) {
+      setIsMapMoved(true);
+    } else {
+      setIsInitialRegionSet(true);
+    }
+  }, [isInitialRegionSet]);
+
+  const handleResearchLocation = useCallback(() => {
+    setIsMapMoved(false);
+  }, []);
 
   const renderHandle = useCallback(() => {
     return (
-      <View style={styles.handleContainer}>
-        <View style={styles.handleIndicator} />
-        <Pressable
-          onPress={moveToUserLocation}
-          style={styles.locationButton}
-          className="absolute right-4 bg-white p-2 rounded-full shadow-lg"
-        >
-          <MaterialIcons name="my-location" size={24} color="black" />
-        </Pressable>
+      <View className="h-6 items-center justify-center relative">
+        <View className="bg-gray-300 w-11 h-1.5 rounded-full mt-2" />
+        <View className='absolute px-4 -top-14 z-50 w-full flex-row justify-between'>
+          <View className='flex-row items-center'>
+            <View className='bg-orange-200 flex-row items-center border border-orange-400 rounded-full px-4 py-3'>
+              <Ionicons name="flag" size={15} color="#ea580c" />
+              <Text className='text-orange-600 ml-1 font-bold '>구조</Text>
+            </View>
+            <View className='bg-white flex-row items-center border border-neutral-300 rounded-full px-4 py-3 ml-3'>
+              <AntDesign name="exclamationcircle" size={15} color="#525252" />
+              <Text className='text-neutral-600 ml-2 font-bold '>제보</Text>
+            </View>
+          </View>
+
+          <Pressable
+            onPress={moveToUserLocation}
+            className="bg-white p-2 rounded-full shadow-lg"
+          >
+            <MaterialIcons name="my-location" size={24} color="#262626" />
+          </Pressable>
+        </View>
       </View>
     );
   }, [moveToUserLocation]);
 
   return (
     <View style={styles.container} className="relative">
+      <View className="absolute z-50 top-20 w-full px-6">
+        <View className="flex-row items-center w-full">
+          <View className="flex-1 flex-row items-center bg-white rounded-full px-6">
+            <Fontisto name="search" size={18} color="#737373" />
+            <TextInput
+              className="flex-1 ml-4 py-3 text-base mb-1 text-neutral-60"
+              placeholder="검색"
+              placeholderTextColor="#737373"
+            />
+          </View>
+          <Pressable
+            className="ml-3 w-12 h-12 rounded-full bg-white items-center justify-center"
+            onPress={() => { console.log('search!') }}
+          >
+            <MaterialIcons name="pets" size={18} color="#ea580c" />
+          </Pressable>
+        </View>
+        {isMapMoved && currentSnapIndex !== 2 && (
+          <Pressable onPress={handleResearchLocation}>
+            <View className='bg-neutral-800 mx-auto px-4 py-2 rounded-full mt-6 flex-row items-center'>
+              <Ionicons name="refresh" size={15} color="#f5f5f5" />
+              <Text className='ml-2 text-xs font-bold text-neutral-100'>현 지도 재검색</Text>
+            </View>
+          </Pressable>
+        )}
+      </View>
+
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -225,6 +248,8 @@ export default function MapsScreen() {
           latitudeDelta: 0.015,
           longitudeDelta: 0.0121,
         }}
+        onRegionChange={handleRegionChange}
+        onRegionChangeComplete={handleRegionChangeComplete}
       />
       <BottomSheet
         ref={bottomSheetRef}
@@ -232,15 +257,21 @@ export default function MapsScreen() {
         snapPoints={snapPoints}
         onChange={handleSheetChanges}
         enablePanDownToClose={false}
+        enableDynamicSizing={false}
+        maxDynamicContentSize={600}
+        overDragResistanceFactor={0}
         handleComponent={renderHandle}
         handleIndicatorStyle={{ display: 'none' }}
         backgroundStyle={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
         containerStyle={{ zIndex: 2000 }}
+        onAnimate={(fromIndex, toIndex) => {
+          return null
+        }}
         animationConfigs={{
-          duration: 300,
-          damping: 10,
-          stiffness: 80,
-          mass: 1,
+          duration: 250,
+          damping: 80,
+          stiffness: 500,
+          mass: 0.8,
         }}
       >
         <BottomSheetView style={[styles.contentContainer, { minHeight: 200, overflow: 'visible' }]}>
@@ -265,22 +296,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  handleContainer: {
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  handleIndicator: {
-    backgroundColor: '#d1d5db',
-    width: 44,
-    height: 5,
-    borderRadius: 2.5,
-    marginTop: 8,
-  },
-  locationButton: {
-    zIndex: 3000,
-    top: -50,
   },
 });
