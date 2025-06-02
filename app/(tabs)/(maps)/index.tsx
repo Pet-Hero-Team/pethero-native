@@ -215,7 +215,7 @@ export default function MapsScreen() {
           <View className="flex-1 flex-row items-center bg-white rounded-full px-6">
             <Fontisto name="search" size={18} color="#737373" />
             <TextInput
-              className="flex-1 ml-4 py-3 text-base mb-1 text-neutral-60"
+              className="flex-1 ml-4 py-3 text-base mb-1 text-neutral-600"
               placeholder="검색"
               placeholderTextColor="#737373"
             />
