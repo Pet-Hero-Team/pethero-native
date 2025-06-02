@@ -28,8 +28,8 @@ export default function TabLayout() {
         options={{
           tabBarIcon: () => (
             <>
-              <FontAwesome name="home" size={24} color="black" />
-              <Text className="text-neutral-800 mt-2 text-xs">홈</Text>
+              <FontAwesome name="home" size={24} color="#404040" />
+              <Text className="text-neutral-700 mt-2 text-xs">홈</Text>
             </>
           ),
         }}
@@ -39,8 +39,8 @@ export default function TabLayout() {
         options={{
           tabBarIcon: () => (
             <>
-              <FontAwesome5 name="map-marker-alt" size={21} color="#262626" />
-              <Text className="text-neutral-800 mt-2 text-xs">지도</Text>
+              <FontAwesome5 name="map-marker-alt" size={21} color="#404040" />
+              <Text className="text-neutral-700 mt-2 text-xs">지도</Text>
             </>
           ),
         }}
@@ -50,8 +50,8 @@ export default function TabLayout() {
         options={{
           tabBarIcon: () => (
             <>
-              <Ionicons name="chatbox-ellipses" size={21} color="#262626" />
-              <Text className="text-neutral-800 mt-2 text-xs">채팅</Text>
+              <Ionicons name="chatbox-ellipses" size={21} color="#404040" />
+              <Text className="text-neutral-700 mt-2 text-xs">채팅</Text>
             </>
           ),
         }}
