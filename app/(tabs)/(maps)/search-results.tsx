@@ -2,17 +2,22 @@ import Feather from '@expo/vector-icons/Feather';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { router, useNavigation } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import Fuse from 'fuse.js';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Platform, Pressable, SafeAreaView, Text, TextInput, View } from 'react-native';
 
-export default function SearchScreen() {
+export default function SearchResultsScreen() {
     const navigation = useNavigation();
+    const { query } = useLocalSearchParams<{ query: string }>();
     const [searchQuery, setSearchQuery] = useState('');
-    const [recentSearches, setRecentSearches] = useState<string[]>([]);
-    const [showResults, setShowResults] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const tabBarHeight = useBottomTabBarHeight();
+
+
+    useEffect(() => {
+        setSearchQuery(query || '');
+    }, [query]);
 
     const mockResults = [
         { id: '1', title: '골든리트리버 구조 요청' },
@@ -27,58 +32,29 @@ export default function SearchScreen() {
     );
 
     const handleSearchSubmit = () => {
-        if (searchQuery.trim() && !recentSearches.includes(searchQuery)) {
-            setRecentSearches([searchQuery, ...recentSearches.slice(0, 4)]);
-        }
-        setShowResults(!!searchQuery.trim());
-        router.push({ pathname: '/(maps)/search-results', params: { query: searchQuery } });
-    };
-
-    const handleClearRecentSearches = () => {
-        setRecentSearches([]);
-    };
-
-    const handleRecentSearchPress = (search: string) => {
-        setSearchQuery(search);
-        setShowResults(true);
-        router.push({ pathname: '/(maps)/search-results', params: { query: search } });
-    };
-
-    const handleDeleteRecentSearch = (search: string) => {
-        setRecentSearches(recentSearches.filter((item) => item !== search));
+        setIsTyping(false);
+        router.push({ pathname: '/(maps)/searchResults', params: { query: searchQuery } });
     };
 
     const handleSearchInputChange = (text: string) => {
         setSearchQuery(text);
-        setShowResults(!!text.trim());
+        setIsTyping(!!text.trim());
     };
 
     const handleSuggestionPress = (title: string) => {
         setSearchQuery(title);
-        setShowResults(true);
-        router.push({ pathname: '/(maps)/search-results', params: { query: title } });
+        setIsTyping(false);
+        router.push({ pathname: '/(maps)/searchResults', params: { query: title } });
     };
 
     const handleClearSearch = () => {
         setSearchQuery('');
-        setShowResults(false);
+        setIsTyping(false);
     };
 
     const filteredResults = searchQuery.trim()
         ? fuse.search(searchQuery.trim()).map((result) => result.item)
-        : mockResults;
-
-    const renderRecentSearch = ({ item }: { item: string }) => (
-        <View className="flex-row items-center justify-between py-4 px-6">
-            <Pressable onPress={() => handleRecentSearchPress(item)} className="flex-row items-center flex-1">
-                <Fontisto name="clock" size={16} color="#525252" />
-                <Text className="ml-3 text-base text-neutral-700">{item}</Text>
-            </Pressable>
-            <Pressable onPress={() => handleDeleteRecentSearch(item)} className="p-2">
-                <Ionicons name="close" size={14} color="#525252" />
-            </Pressable>
-        </View>
-    );
+        : [];
 
     const renderSearchResult = ({ item }: { item: { id: string; title: string } }) => {
         const query = searchQuery.trim().toLowerCase();
@@ -108,6 +84,14 @@ export default function SearchScreen() {
         );
     };
 
+    const renderSearchResultItem = ({ item }: { item: { id: string; title: string } }) => (
+        <View className="py-3 px-6">
+            <Text className="text-base text-neutral-700">{item.title}</Text>
+        </View>
+    );
+
+    const showRecommendations = isTyping && filteredResults.length > 0;
+
     return (
         <SafeAreaView
             className="flex-1 bg-white"
@@ -123,7 +107,7 @@ export default function SearchScreen() {
                         placeholder="구조, 제보, 모임을 검색해보세요."
                         value={searchQuery}
                         onChangeText={handleSearchInputChange}
-                        autoFocus={true}
+                        autoFocus={false}
                         placeholderTextColor="#c7c7c7"
                         returnKeyType="search"
                         onSubmitEditing={handleSearchSubmit}
@@ -139,33 +123,32 @@ export default function SearchScreen() {
             </View>
 
             <View className="flex-1 mt-6">
-                {!showResults && (
-                    <View>
-                        <View className="flex-row justify-between items-center px-6">
-                            <Text className="text-lg font-bold text-neutral-800">최근 검색</Text>
-                            <Pressable onPress={handleClearRecentSearches}>
-                                <Text className="text-sm text-neutral-500">전체 삭제</Text>
-                            </Pressable>
-                        </View>
-                        {recentSearches.length > 0 ? (
-                            <FlatList
-                                data={recentSearches}
-                                renderItem={renderRecentSearch}
-                                keyExtractor={(item, index) => index.toString()}
-                                scrollEnabled={false}
-                            />
-                        ) : (
-                            null
-                        )}
-                    </View>
-                )}
-
-                {showResults && (
+                {showRecommendations ? (
                     <View className="flex-1">
+                        <Text className="text-lg font-bold text-neutral-800 px-6">추천 검색어</Text>
                         <FlatList
                             data={filteredResults}
                             renderItem={renderSearchResult}
                             keyExtractor={(item) => item.id}
+                            ListEmptyComponent={
+                                <View className="px-6 py-4">
+                                    <Text className="text-base text-neutral-500">추천 검색어가 없습니다.</Text>
+                                </View>
+                            }
+                        />
+                    </View>
+                ) : (
+                    <View className="flex-1">
+                        <Text className="text-lg font-bold text-neutral-800 px-6">검색 결과</Text>
+                        <FlatList
+                            data={filteredResults}
+                            renderItem={renderSearchResultItem}
+                            keyExtractor={(item) => item.id}
+                            ListEmptyComponent={
+                                <View className="px-6 py-4">
+                                    <Text className="text-base text-neutral-500">검색 결과가 없습니다.</Text>
+                                </View>
+                            }
                         />
                     </View>
                 )}
