@@ -5,8 +5,9 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -34,6 +35,7 @@ export default function MapsScreen() {
   const [isMapMoved, setIsMapMoved] = useState(false);
   const [isInitialRegionSet, setIsInitialRegionSet] = useState(false);
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
+  const router = useRouter();
 
   const snapPoints = useMemo(() => [60, 300, 620], []);
 
@@ -76,7 +78,7 @@ export default function MapsScreen() {
         setLoading(true);
         await new Promise((resolve) => setTimeout(resolve, 1000));
         const mockData: Item = {
-          id: '1',
+          id: '1      ',
           title: '라이',
           gender: 'female',
           address: '서울시 강남구 32길 7',
@@ -181,6 +183,10 @@ export default function MapsScreen() {
     setIsMapMoved(false);
   }, []);
 
+  const handleSearchPress = () => {
+    router.push('/(maps)/search');
+  };
+
   const renderHandle = useCallback(() => {
     return (
       <View className="h-6 items-center justify-center relative">
@@ -189,11 +195,11 @@ export default function MapsScreen() {
           <View className='flex-row items-center'>
             <View className='bg-orange-200 flex-row items-center border border-orange-400 rounded-full px-4 py-3'>
               <Ionicons name="flag" size={15} color="#ea580c" />
-              <Text className='text-orange-600 ml-1 font-bold '>구조</Text>
+              <Text className='text-orange-600 ml-1 font-bold'>구조</Text>
             </View>
             <View className='bg-white flex-row items-center border border-neutral-300 rounded-full px-4 py-3 ml-3'>
               <AntDesign name="exclamationcircle" size={15} color="#525252" />
-              <Text className='text-neutral-600 ml-2 font-bold '>제보</Text>
+              <Text className='text-neutral-600 ml-2 font-bold'>제보</Text>
             </View>
           </View>
 
@@ -211,25 +217,17 @@ export default function MapsScreen() {
   return (
     <View style={styles.container} className="relative">
       <View className="absolute z-50 top-20 w-full px-6">
-        <View className="flex-row items-center w-full">
-          <View className="flex-1 flex-row items-center bg-white rounded-full px-6">
+        <Pressable onPress={handleSearchPress}>
+          <View className="flex-1 flex-row items-center justify-between bg-white rounded-lg pl-6 pr-4">
+            <View className="flex-row items-center py-4 text-base">
+              <Text className='text-base font-bold text-[#c7c7c7]'>구조, 제보, 모임을 검색해보세요.</Text>
+            </View>
             <Fontisto name="search" size={18} color="#737373" />
-            <TextInput
-              className="flex-1 ml-4 py-3 text-base mb-1 text-neutral-600"
-              placeholder="검색"
-              placeholderTextColor="#737373"
-            />
           </View>
-          <Pressable
-            className="ml-3 w-12 h-12 rounded-full bg-white items-center justify-center"
-            onPress={() => { console.log('search!') }}
-          >
-            <MaterialIcons name="pets" size={18} color="#ea580c" />
-          </Pressable>
-        </View>
+        </Pressable>
         {isMapMoved && currentSnapIndex !== 2 && (
           <Pressable onPress={handleResearchLocation}>
-            <View className='bg-neutral-800 mx-auto px-4 py-2 rounded-full mt-6 flex-row items-center'>
+            <View className='bg-neutral-800 mx-auto px-4 py-3 rounded-full mt-6 flex-row items-center'>
               <Ionicons name="refresh" size={15} color="#f5f5f5" />
               <Text className='ml-2 text-xs font-bold text-neutral-100'>현 지도 재검색</Text>
             </View>
@@ -251,6 +249,7 @@ export default function MapsScreen() {
         onRegionChange={handleRegionChange}
         onRegionChangeComplete={handleRegionChangeComplete}
       />
+
       <BottomSheet
         ref={bottomSheetRef}
         index={0}
