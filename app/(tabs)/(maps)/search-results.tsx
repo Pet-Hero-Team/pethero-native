@@ -12,18 +12,24 @@ export default function SearchResultsScreen() {
     const { query } = useLocalSearchParams<{ query: string }>();
     const [searchQuery, setSearchQuery] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [selectedTab, setSelectedTab] = useState('구조요청');
     const tabBarHeight = useBottomTabBarHeight();
-
 
     useEffect(() => {
         setSearchQuery(query || '');
     }, [query]);
 
     const mockResults = [
-        { id: '1', title: '골든리트리버 구조 요청' },
-        { id: '2', title: '유기동물 제보' },
-        { id: '3', title: '강아지 모임' },
-        { id: '4', title: '고양이 구조' },
+        { id: '1', title: '골든리트리버 구조 요청 - 서울' },
+        { id: '2', title: '유기동물 제보 - 부산' },
+        { id: '3', title: '강아지 모임 - 인천' },
+        { id: '4', title: '고양이 구조 - 대구' },
+        { id: '5', title: '푸들 구조 요청 - 광주' },
+        { id: '6', title: '유기 고양이 제보 - 대전' },
+        { id: '7', title: '강아지 산책 모임 - 울산' },
+        { id: '8', title: '시바견 구조 - 세종' },
+        { id: '9', title: '고양이 입양 제보 - 경기' },
+        { id: '10', title: '말티즈 모임 - 제주' },
     ];
 
     const fuse = useMemo(
@@ -33,7 +39,7 @@ export default function SearchResultsScreen() {
 
     const handleSearchSubmit = () => {
         setIsTyping(false);
-        router.push({ pathname: '/(maps)/searchResults', params: { query: searchQuery } });
+        router.push({ pathname: '/(maps)/search-results', params: { query: searchQuery } });
     };
 
     const handleSearchInputChange = (text: string) => {
@@ -44,12 +50,16 @@ export default function SearchResultsScreen() {
     const handleSuggestionPress = (title: string) => {
         setSearchQuery(title);
         setIsTyping(false);
-        router.push({ pathname: '/(maps)/searchResults', params: { query: title } });
+        router.push({ pathname: '/(maps)/search-results', params: { query: title } });
     };
 
     const handleClearSearch = () => {
         setSearchQuery('');
         setIsTyping(false);
+    };
+
+    const handleTabPress = (tab: string) => {
+        setSelectedTab(tab);
     };
 
     const filteredResults = searchQuery.trim()
@@ -92,6 +102,8 @@ export default function SearchResultsScreen() {
 
     const showRecommendations = isTyping && filteredResults.length > 0;
 
+    const tabs = ['구조요청', '제보'];
+
     return (
         <SafeAreaView
             className="flex-1 bg-white"
@@ -114,15 +126,34 @@ export default function SearchResultsScreen() {
                     />
                     <Pressable onPress={searchQuery.trim() ? handleClearSearch : handleSearchSubmit}>
                         {searchQuery.trim() ? (
-                            <Ionicons name="close-circle" size={24} color="black" className="mr-2" />
+                            <Ionicons name="close-circle" size={20} color="#a3a3a3" className="mr-2" />
                         ) : (
                             <Fontisto name="search" size={18} color="#525252" className="mr-2" />
                         )}
                     </Pressable>
                 </View>
             </View>
+            {!showRecommendations && (
+                <View className="mt-4">
+                    <View className="flex-row items-center">
+                        {tabs.map((tab) => (
+                            <Pressable
+                                key={tab}
+                                onPress={() => handleTabPress(tab)}
+                                className={`w-1/2 py-2 px-4 ${selectedTab === tab ? 'border-b-2 border-neutral-800' : 'border-b border-neutral-200'}`}
+                            >
+                                <Text
+                                    className={`text-base text-center ${selectedTab === tab ? 'font-bold text-neutral-800' : 'text-neutral-500'}`}
+                                >
+                                    {tab}
+                                </Text>
+                            </Pressable>
+                        ))}
+                    </View>
+                </View>
+            )}
 
-            <View className="flex-1 mt-6">
+            <View className="flex-1 mt-4">
                 {showRecommendations ? (
                     <View className="flex-1">
                         <Text className="text-lg font-bold text-neutral-800 px-6">추천 검색어</Text>
@@ -145,7 +176,7 @@ export default function SearchResultsScreen() {
                             renderItem={renderSearchResultItem}
                             keyExtractor={(item) => item.id}
                             ListEmptyComponent={
-                                <View className="px-6 py-4">
+                                <View className="flex-1 justify-center items-center">
                                     <Text className="text-base text-neutral-500">검색 결과가 없습니다.</Text>
                                 </View>
                             }

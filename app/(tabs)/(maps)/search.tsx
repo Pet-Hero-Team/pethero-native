@@ -130,7 +130,7 @@ export default function SearchScreen() {
                     />
                     <Pressable onPress={searchQuery.trim() ? handleClearSearch : handleSearchSubmit}>
                         {searchQuery.trim() ? (
-                            <Ionicons name="close-circle" size={24} color="black" className="mr-2" />
+                            <Ionicons name="close-circle" size={20} color="#a3a3a3" className="mr-2" />
                         ) : (
                             <Fontisto name="search" size={18} color="#525252" className="mr-2" />
                         )}
