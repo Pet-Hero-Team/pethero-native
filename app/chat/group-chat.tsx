@@ -1,5 +1,7 @@
-import { Feather, Fontisto, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Entypo, Fontisto, Ionicons, MaterialCommunityIcons, Octicons } from '@expo/vector-icons';
 import AntDesign from '@expo/vector-icons/AntDesign';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { FlatList, Image, SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const messages = [
@@ -11,10 +13,11 @@ const messages = [
 ];
 
 export default function GroupChatScreen() {
+    const [value, setValue] = useState("");
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="flex-row items-center px-4 py-4 border-b border-neutral-100">
-                <TouchableOpacity>
+                <TouchableOpacity onPress={() => { router.back() }}>
                     <Ionicons name="chevron-back" size={24} color="#222" />
                 </TouchableOpacity>
                 <Image source={{ uri: 'https://picsum.photos/200/300' }} className="w-10 h-10 rounded-full ml-4" />
@@ -50,28 +53,45 @@ export default function GroupChatScreen() {
                             </View>
                         </View>
                     ) : (
-                        <View className="items-start mb-3">
-                            <View className="bg-neutral-100 rounded-xl px-4 py-3 max-w-[80%]">
+                        <View className="mb-3 flex-row items-center">
+                            <Image source={{ uri: 'https://picsum.photos/200/300' }} className="w-8 h-8 rounded-full" />
+                            <View className="bg-neutral-100 rounded-xl px-4 py-3 max-w-[80%] ml-3">
                                 <Text className="text-neutral-900">{item.text}</Text>
                             </View>
                         </View>
                     )
                 }
             />
-            <View className="flex-row items-center px-6 pt-6 bg-white border-t border-neutral-200">
-                <TouchableOpacity>
-                    <AntDesign name="plus" size={24} color="black" />
+            <View className="flex-row items-center bg-neutral-100 rounded-full px-5 py-3 mx-4">
+                <TouchableOpacity className="bg-orange-500 rounded-full w-9 h-9 items-center justify-center mr-4">
+                    <Entypo name="camera" size={16} color="#fff" />
                 </TouchableOpacity>
-                <View className="flex-1 bg-neutral-100 rounded-full px-4 py-3 mx-4">
-                    <TextInput
-                        placeholder=""
-                        className="text-base text-neutral-800"
-                        placeholderTextColor="#aaa"
-                    />
-                </View>
-                <TouchableOpacity>
-                    <Feather name="send" size={22} color="black" />
-                </TouchableOpacity>
+                <TextInput
+                    className="flex-1 text-lg text-neutral-700"
+                    placeholder="메시지 보내기..."
+                    placeholderTextColor="#a3a3a3"
+                    style={{ paddingVertical: 0, maxHeight: 100 }}
+                    value={value}
+                    onChangeText={setValue}
+                    multiline={true}
+                    blurOnSubmit={false}
+                />
+
+                {value.length === 0 && (
+                    <>
+                        <TouchableOpacity className="ml-3">
+                            <Octicons name="image" size={21} color="#262626" />
+                        </TouchableOpacity>
+                        <TouchableOpacity className="ml-3">
+                            <MaterialCommunityIcons name="map-marker-circle" size={26} color="#262626" />
+                        </TouchableOpacity>
+                    </>
+                )}
+                {value.length > 0 && (
+                    <TouchableOpacity className="bg-neutral-600 rounded-xl size-9 items-center justify-center ml-3">
+                        <Ionicons name="arrow-up" size={18} color="#fff" />
+                    </TouchableOpacity>
+                )}
             </View>
         </SafeAreaView>
     );
