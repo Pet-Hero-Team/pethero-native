@@ -73,6 +73,27 @@ export default function ChatsScreen() {
                       </View>
                     </View>
                   </Link>
+                  <Link href="/chat/personal-chat" className="w-full px-4 py-4 flex-row justify-between items-center flex">
+                    <View className="flex-row justify-between items-center w-full">
+                      <View className='flex-row items-center'>
+                        <Image source={{ uri: "https://picsum.photos/200/300" }} className="w-16 h-16 rounded-full" />
+                        <View className='ml-5'>
+                          <View className='flex-row items-center'>
+                            <Text className='font-bold text-slate-700 text-sm mr-1'>수색 중</Text>
+                            <MaterialCommunityIcons name="map-search-outline" size={16} color="#334155" />
+                          </View>
+                          <Text className='text-neutral-800 font-bold text-lg'>라이</Text>
+                          <Text className='text-neutral-600 mt-1 text-sm'>서울 중앙공원에서 갈색 포메 유기견 봤던거..</Text>
+                        </View>
+                      </View>
+                      <View className="items-end justify-between">
+                        <Text className="text-sm text-neutral-500 mb-2">02:11</Text>
+                        <View className="bg-orange-200 rounded-full w-6 h-6 flex-row items-center justify-center mt-2">
+                          <Text className="text-orange-500 font-semibold text-sm text-center">2</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </Link>
                   <View className='w-full px-4 py-4 flex-row justify-between'>
                     <View className='flex-row items-center'>
                       <Image source={{ uri: "https://picsum.photos/200/300" }} className="w-16 h-16 rounded-full" />
