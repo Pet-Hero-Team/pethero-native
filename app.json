@@ -48,6 +48,21 @@
         {
           "locationWhenInUsePermission": "앱 사용 중 위치 접근을 허용하시겠습니까?"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "사진을 선택하려면 접근 권한이 필요합니다.",
+          "cameraPermission": "사진 촬영을 위해 카메라 접근 권한이 필요합니다.",
+          "cameraRollPermission": "사진을 저장하려면 접근 권한이 필요합니다."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "사진첩 접근을 허용하시겠습니까?",
+          "savePhotosPermission": "사진을 저장하려면 접근 권한이 필요합니다."
+        }
       ]
     ],
     "experiments": {
