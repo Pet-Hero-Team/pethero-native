@@ -1,4 +1,4 @@
-import { AntDesign, Entypo, Fontisto, Ionicons, MaterialCommunityIcons, Octicons } from '@expo/vector-icons';
+import { AntDesign, Entypo, EvilIcons, Fontisto, Ionicons, MaterialCommunityIcons, Octicons } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
@@ -17,18 +17,15 @@ const messages = [
 
 export default function GroupChatScreen() {
     const [value, setValue] = useState("");
-    const [pickedImages, setPickedImages] = useState([]);
     const [selectedAssets, setSelectedAssets] = useState([]);
     const [currentSnapIndex, setCurrentSnapIndex] = useState(-1);
     const [galleryImages, setGalleryImages] = useState([]);
     const [permissionStatus, setPermissionStatus] = useState(null);
 
     const sheetRef = useRef(null);
-    const { height } = useWindowDimensions();
+    const { height, width: screenWidth } = useWindowDimensions();
 
-
-    const snapPoints = useMemo(() => ["50%", "90%"], []);
-
+    const snapPoints = useMemo(() => ["60%", "90%"], []);
 
     useEffect(() => {
         (async () => {
@@ -39,7 +36,6 @@ export default function GroupChatScreen() {
             }
         })();
     }, []);
-
 
     const loadGalleryImages = async () => {
         const { assets } = await MediaLibrary.getAssetsAsync({
@@ -55,25 +51,29 @@ export default function GroupChatScreen() {
     }, []);
 
     const handleSheetChanges = useCallback((index) => {
-        console.log('BottomSheet 스냅 포인트 인덱스:', index, '스냅 포인트:', snapPoints[index] || '닫힘');
         setCurrentSnapIndex(index);
-    }, [snapPoints]);
+        if (index === -1) {
+            setSelectedAssets([]);
+        }
+    }, []);
 
     const toggleSelectAsset = (asset) => {
         setSelectedAssets((prev) =>
             prev.some(a => a.id === asset.id)
-                ? prev.filter(a => a.id !== asset.id)
+                ? prev.filter(a => a.id !== a.id)
                 : [...prev, asset]
         );
     };
 
     const confirmSelectImages = () => {
-        setPickedImages([...pickedImages, ...selectedAssets.map(a => a.uri)]);
+        const uris = selectedAssets.map(a => a.uri);
+        console.log('Sent images:', uris);
         setSelectedAssets([]);
         sheetRef.current?.close();
     };
 
     const pickFromNativeGallery = async () => {
+        sheetRef.current?.close();
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
             alert('갤러리 접근 권한이 필요합니다!');
@@ -86,36 +86,48 @@ export default function GroupChatScreen() {
             quality: 1,
         });
         if (!result.canceled) {
-            setPickedImages([...pickedImages, ...result.assets.map(asset => asset.uri)]);
-            sheetRef.current?.close();
+            const uris = result.assets.map(asset => asset.uri);
+            console.log('Sent images:', uris);
         }
     };
 
-    const removeImage = (uriToRemove) => {
-        setPickedImages(prev => prev.filter(uri => uri !== uriToRemove));
-    };
-
-    const renderGalleryItem = useCallback(({ item }) => {
-        const isSelected = selectedAssets.some(a => a.id === item.id);
-        const selectIndex = selectedAssets.findIndex(a => a.id === item.id);
-        return (
-            <TouchableOpacity
-                className="flex-1 aspect-square m-0.5"
-                onPress={() => toggleSelectAsset(item)}
-            >
-                <Image
-                    source={{ uri: item.uri }}
-                    className="w-full h-full rounded"
-                    style={{ opacity: isSelected ? 0.6 : 1 }}
-                />
-                {isSelected && (
-                    <View className="absolute bottom-1 right-1 bg-blue-500 rounded-full w-6 h-6 items-center justify-center">
-                        <Text className="text-white text-xs font-bold">{selectIndex + 1}</Text>
+    const renderGalleryItem = useCallback(
+        ({ item }) => {
+            const isSelected = selectedAssets.some((a) => a.id === item.id);
+            const selectIndex = selectedAssets.findIndex((a) => a.id === item.id);
+            const itemSize = (screenWidth - 10) / 4;
+            return (
+                <TouchableOpacity
+                    style={{
+                        width: itemSize,
+                        height: itemSize,
+                        margin: 0.5,
+                    }}
+                    onPress={() => toggleSelectAsset(item)}
+                >
+                    <View className="relative overflow-hidden rounded">
+                        <Image
+                            source={{ uri: item.uri }}
+                            style={{
+                                width: itemSize,
+                                height: itemSize,
+                            }}
+                            resizeMode="cover"
+                        />
+                        {isSelected && (
+                            <>
+                                <View className="absolute inset-0 bg-black/40 rounded" />
+                                <View className="absolute bottom-2 right-2 bg-white rounded-full w-5 h-5 items-center justify-center">
+                                    <Text className="text-neutral-800 text-[10px] font-bold">{selectIndex + 1}</Text>
+                                </View>
+                            </>
+                        )}
                     </View>
-                )}
-            </TouchableOpacity>
-        );
-    }, [selectedAssets]);
+                </TouchableOpacity>
+            );
+        },
+        [selectedAssets, screenWidth]
+    );
 
     const renderMessageItem = ({ item }) => (
         item.fromMe ? (
@@ -138,7 +150,6 @@ export default function GroupChatScreen() {
             </View>
         )
     );
-
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -181,30 +192,6 @@ export default function GroupChatScreen() {
                     keyExtractor={item => item.id}
                     renderItem={renderMessageItem}
                 />
-                {pickedImages.length > 0 && (
-                    <View className="px-4 pt-2">
-                        <FlatList
-                            horizontal
-                            data={pickedImages}
-                            keyExtractor={(item) => item}
-                            renderItem={({ item }) => (
-                                <View className="relative mr-2">
-                                    <Image
-                                        source={{ uri: item }}
-                                        className="w-20 h-20 rounded-lg"
-                                    />
-                                    <TouchableOpacity
-                                        className="absolute -top-1 -right-1 bg-red-500 rounded-full w-5 h-5 items-center justify-center"
-                                        onPress={() => removeImage(item)}
-                                    >
-                                        <Text className="text-white text-xs">×</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            )}
-                            contentContainerStyle={{ paddingVertical: 8 }}
-                        />
-                    </View>
-                )}
                 <View className="flex-row items-center bg-neutral-100 rounded-full px-5 py-3 mx-4 mb-4">
                     <TouchableOpacity className="bg-orange-500 rounded-full w-9 h-9 items-center justify-center mr-4">
                         <Entypo name="camera" size={16} color="#fff" />
@@ -230,7 +217,8 @@ export default function GroupChatScreen() {
                     )}
                     {value.length > 0 && (
                         <TouchableOpacity
-                            className={`bg-neutral-600 rounded-lg size-8 items-center justify-center`} disabled={pickedImages.length === 0}>
+                            className="bg-neutral-600 rounded-lg size-8 items-center justify-center"
+                        >
                             <Ionicons name="arrow-up" size={18} color="#ffffff" />
                         </TouchableOpacity>
                     )}
@@ -242,30 +230,35 @@ export default function GroupChatScreen() {
                     enableDynamicSizing={false}
                     enableHandlePanningGesture={true}
                     enablePanDownToClose={true}
-                    handleIndicatorStyle={{ backgroundColor: '#d1d5db', width: 40, height: 4, borderRadius: 2, marginTop: 8 }}
-                    backgroundStyle={{ backgroundColor: '#ffffff', borderTopLeftRadius: 15, borderTopRightRadius: 15 }}
+                    handleIndicatorStyle={{ display: 'none' }}
+                    backgroundStyle={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
                     backdropComponent={renderBackdrop}
                     onChange={handleSheetChanges}
                 >
                     <View className="flex-1 pb-24" style={{ minHeight: height * 0.9 }}>
-                        <View className="flex-row justify-between items-center px-4 py-2">
-                            <TouchableOpacity onPress={pickFromNativeGallery}>
-                                <Text className="text-lg font-bold text-neutral-800">사진 선택</Text>
+                        <View className="bg-gray-300 w-11 h-1.5 rounded-full mx-auto" />
+                        <View className="flex-row items-center px-2 pb-4 pt-5">
+                            <View className="flex-1" />
+                            <TouchableOpacity onPress={pickFromNativeGallery} className="flex-row items-center ml-3">
+                                <Text className="font-bold text-neutral-800 text-lg ml-2">최근항목</Text>
+                                <EvilIcons name="chevron-down" size={26} color="black" className="-m-1" />
                             </TouchableOpacity>
-                            <TouchableOpacity
-                                className={`bg-blue-500 rounded-full px-4 py-2 ${selectedAssets.length === 0 ? 'opacity-50' : ''}`}
-                                disabled={selectedAssets.length === 0}
-                                onPress={confirmSelectImages}
-                            >
-                                <Text className="text-white font-bold">보내기</Text>
-                            </TouchableOpacity>
+                            <View className="flex-1 flex-row justify-end">
+                                <TouchableOpacity
+                                    className={` rounded-lg size-8 items-center justify-center ${selectedAssets.length === 0 ? 'bg-neutral-300' : 'bg-neutral-700'}`}
+                                    disabled={selectedAssets.length === 0}
+                                    onPress={confirmSelectImages}
+                                >
+                                    <Ionicons name="arrow-up" size={18} color="#ffffff" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                         {permissionStatus === 'granted' ? (
                             <FlatList
                                 data={galleryImages}
                                 renderItem={renderGalleryItem}
                                 keyExtractor={(item) => item.id}
-                                numColumns={3}
+                                numColumns={4}
                                 contentContainerStyle={{ padding: 2 }}
                             />
                         ) : (
