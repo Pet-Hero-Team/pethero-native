@@ -5,6 +5,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
 import { FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 
@@ -104,7 +105,9 @@ export default function HomeScreen() {
         <View className="flex-row w-full bg-neutral-100 pt-8 px-4">
           <View className="flex-1 bg-white rounded-3xl p-6 mr-4 justify-between">
             <View>
-              <Text className="text-2xl font-bold text-neutral-800 mb-2">제보하기</Text>
+              <Link href={"/home/report"}>
+                <Text className="text-2xl font-bold text-neutral-800 mb-2">제보하기</Text>
+              </Link>
               <Text className="text-lg text-neutral-600">유기동물을 발견했어요.</Text>
             </View>
             <Image
