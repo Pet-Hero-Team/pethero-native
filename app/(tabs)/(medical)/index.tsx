@@ -1,5 +1,6 @@
 import { ShadowView } from '@/components/ShadowView';
 import { AntDesign, FontAwesome6, Fontisto, Ionicons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
 import { Image, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 const newsList = [
     {
@@ -120,7 +121,7 @@ export default function MedicalScreen() {
                 <View className="bg-white px-6 py-8">
                     <View className="flex-row items-center justify-between mb-6">
                         <Text className="text-neutral-700 font-bold text-xl">애완 소식지</Text>
-                        <Text className="text-neutral-500 text-sm">더보기</Text>
+                        <Link href={"/medical/news"} className="text-neutral-500 text-sm">더보기</Link>
                     </View>
 
                     <ScrollView
