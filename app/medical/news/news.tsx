@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
-export default function BirdDetailScreen() {
+export default function NewsScreen() {
     const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
 
     return (

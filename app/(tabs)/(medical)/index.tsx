@@ -74,82 +74,94 @@ export default function MedicalScreen() {
 
 
                     <View className='mt-2'>
-                        <View className='border-b border-b-neutral-100 py-8'>
-                            <View className='px-6'>
-                                <Text className='text-neutral-700 font-bold text-lg pb-1'>고양이 뱃살에 발진이 일어났어요</Text>
-                                <Text className='text-neutral-600 text-base leading-7'>지난주부터 구석에서 혼자 막 배를 긁길래 장난인줄 알았는데 {"\n"}자세히보니 배에 발진이 일어나있어요 혹시 어떻게 해야할까요?</Text>
-                            </View>
-                            <View className='flex-row items-center px-6 pt-4 justify-between'>
-                                <View className='bg-neutral-100 py-2 px-3 rounded-lg'>
-                                    <Text className='text-sm font-semibold text-neutral-600'>피부 질환</Text>
+
+                        <Link href={`/medical/questions/[1]`}>
+                            <View className='border-b border-b-neutral-100 py-8'>
+                                <View className='px-6'>
+                                    <Text className='text-neutral-700 font-bold text-lg pb-1'>고양이 뱃살에 발진이 일어났어요</Text>
+                                    <Text className='text-neutral-600 text-base leading-7'>지난주부터 구석에서 혼자 막 배를 긁길래 장난인줄 알았는데 {"\n"}자세히보니 배에 발진이 일어나있어요 혹시 어떻게 해야할까요?</Text>
                                 </View>
-                                <Text className='text-sm text-neutral-600'>15분 전</Text>
-                            </View>
-                        </View>
-                        <View className='border-b border-b-neutral-100 py-8'>
-                            <View className='px-6'>
-                                <Text className='text-neutral-700 font-bold text-lg pb-1'>고양이 뱃살에 발진이 일어났어요</Text>
-                                <Text className='text-neutral-600 text-base leading-7'>지난주부터 구석에서 혼자 막 배를 긁길래 장난인줄 알았는데 {"\n"}자세히보니 배에 발진이 일어나있어요 혹시 어떻게 해야할까요?</Text>
-                            </View>
-                            <View className='flex-row items-center px-6 pt-4 justify-between'>
-                                <View className='bg-neutral-100 py-2 px-3 rounded-lg'>
-                                    <Text className='text-sm font-semibold text-neutral-600'>피부 질환</Text>
+                                <View className='flex-row items-center px-6 pt-4 justify-between'>
+                                    <View className='bg-neutral-100 py-2 px-3 rounded-lg'>
+                                        <Text className='text-sm font-semibold text-neutral-600'>피부 질환</Text>
+                                    </View>
+                                    <Text className='text-sm text-neutral-600'>15분 전</Text>
                                 </View>
-                                <Text className='text-sm text-neutral-600'>15분 전</Text>
                             </View>
-                        </View>
-                        <View className='border-b border-b-neutral-100 py-8'>
-                            <View className='px-6'>
-                                <Text className='text-neutral-700 font-bold text-lg pb-1'>고양이 뱃살에 발진이 일어났어요</Text>
-                                <Text className='text-neutral-600 text-base leading-7'>지난주부터 구석에서 혼자 막 배를 긁길래 장난인줄 알았는데 {"\n"}자세히보니 배에 발진이 일어나있어요 혹시 어떻게 해야할까요?</Text>
-                            </View>
-                            <View className='flex-row items-center px-6 pt-4 justify-between'>
-                                <View className='bg-neutral-100 py-2 px-3 rounded-lg'>
-                                    <Text className='text-sm font-semibold text-neutral-600'>피부 질환</Text>
+
+                        </Link>
+                        <Link href={`/medical/questions/[2]`}>
+                            <View className='border-b border-b-neutral-100 py-8'>
+                                <View className='px-6'>
+                                    <Text className='text-neutral-700 font-bold text-lg pb-1'>고양이 뱃살에 발진이 일어났어요</Text>
+                                    <Text className='text-neutral-600 text-base leading-7'>지난주부터 구석에서 혼자 막 배를 긁길래 장난인줄 알았는데 {"\n"}자세히보니 배에 발진이 일어나있어요 혹시 어떻게 해야할까요?</Text>
                                 </View>
-                                <Text className='text-sm text-neutral-600'>15분 전</Text>
+                                <View className='flex-row items-center px-6 pt-4 justify-between'>
+                                    <View className='bg-neutral-100 py-2 px-3 rounded-lg'>
+                                        <Text className='text-sm font-semibold text-neutral-600'>피부 질환</Text>
+                                    </View>
+                                    <Text className='text-sm text-neutral-600'>15분 전</Text>
+                                </View>
                             </View>
-                        </View>
-                        <View className='border-b border-b-neutral-100 py-5'>
-                            <View className='flex-row items-center justify-center ml-2'>
-                                <Text className='text-center text-base text-neutral-600 mr-1'>더보기</Text>
-                                <AntDesign name="right" size={12} color="#6c6c6c" />
+                        </Link>
+
+                        <Link href={`/medical/questions/[3]`}>
+                            <View className='border-b border-b-neutral-100 py-8'>
+                                <View className='px-6'>
+                                    <Text className='text-neutral-700 font-bold text-lg pb-1'>고양이 뱃살에 발진이 일어났어요</Text>
+                                    <Text className='text-neutral-600 text-base leading-7'>지난주부터 구석에서 혼자 막 배를 긁길래 장난인줄 알았는데 {"\n"}자세히보니 배에 발진이 일어나있어요 혹시 어떻게 해야할까요?</Text>
+                                </View>
+                                <View className='flex-row items-center px-6 pt-4 justify-between'>
+                                    <View className='bg-neutral-100 py-2 px-3 rounded-lg'>
+                                        <Text className='text-sm font-semibold text-neutral-600'>피부 질환</Text>
+                                    </View>
+                                    <Text className='text-sm text-neutral-600'>15분 전</Text>
+                                </View>
                             </View>
-                        </View>
+                        </Link>
+                        <Link href={"/medical/questions/questions"}>
+                            <View className='border-b border-b-neutral-100 py-5 w-full'>
+                                <View className='flex-row items-center justify-center ml-2'>
+                                    <Text className='text-center text-base text-neutral-600 mr-1'>더보기</Text>
+                                    <AntDesign name="right" size={12} color="#6c6c6c" />
+                                </View>
+                            </View>
+                        </Link>
                     </View>
                 </View>
                 <View className="bg-white px-6 py-8">
                     <View className="flex-row items-center justify-between mb-6">
                         <Text className="text-neutral-700 font-bold text-xl">애완 소식지</Text>
-                        <Link href={"/medical/news"} className="text-neutral-500 text-sm">더보기</Link>
+                        <Link href={"/medical/news/news"} className="text-neutral-500 text-sm">더보기</Link>
                     </View>
-
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         snapToInterval={CARD_WIDTH + CARD_MARGIN}
+                        contentContainerStyle={{ gap: 16 }}
                         decelerationRate="fast"
                     >
                         {newsList.map((item, idx) => (
-                            <View
-                                key={item.id}
-                                style={{
-                                    width: CARD_WIDTH,
-                                    marginRight: idx === newsList.length - 1 ? 0 : CARD_MARGIN,
-                                }}
-                                className={`rounded-2xl relative`}
-                            >
-                                <View className="absolute left-2 top-2 bg-neutral-700 rounded-full px-2 py-1 z-10">
-                                    <Text className="text-xs text-white font-bold">{item.type}</Text>
+                            <Link href={`/medical/news/[${item.id}]`} key={item.id}>
+                                <View
+                                    style={{
+                                        width: CARD_WIDTH,
+                                        marginRight: idx === newsList.length - 1 ? 0 : CARD_MARGIN,
+                                    }}
+                                    className={`rounded-2xl relative`}
+                                >
+                                    <View className="absolute left-2 top-2 bg-neutral-700 rounded-full px-2 py-1 z-10">
+                                        <Text className="text-xs text-white font-bold">{item.type}</Text>
+                                    </View>
+                                    <Image
+                                        source={{ uri: item.image }}
+                                        className={`w-[${CARD_WIDTH}] h-40 rounded-lg`}
+                                        resizeMode="cover"
+                                    />
+                                    <Text className="text-neutral-700 font-bold text-lg mb-1 mt-3">{item.title}</Text>
+                                    <Text className="text-neutral-500 text-xs">{item.period}</Text>
                                 </View>
-                                <Image
-                                    source={{ uri: item.image }}
-                                    className={`w-[${CARD_WIDTH}] h-40 rounded-lg`}
-                                    resizeMode="cover"
-                                />
-                                <Text className="text-neutral-700 font-bold text-lg mb-1 mt-3">{item.title}</Text>
-                                <Text className="text-neutral-500 text-xs">{item.period}</Text>
-                            </View>
+                            </Link>
                         ))}
                     </ScrollView>
                 </View>
