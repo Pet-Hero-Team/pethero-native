@@ -72,7 +72,7 @@ export default function MedicalScreen() {
                     </View>
 
 
-                    <View>
+                    <View className='mt-2'>
                         <View className='border-b border-b-neutral-100 py-8'>
                             <View className='px-6'>
                                 <Text className='text-neutral-700 font-bold text-lg pb-1'>고양이 뱃살에 발진이 일어났어요</Text>
