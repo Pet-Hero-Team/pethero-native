@@ -2,16 +2,34 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
+import { Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import PagerView from 'react-native-pager-view';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const posts = [
+  {
+    id: 1,
+    title: 'Restaurant Territórios',
+    image: { uri: 'https://picsum.photos/500/300' },
+  },
+  {
+    id: 2,
+    title: 'Les Champs Libres',
+    image: { uri: 'https://picsum.photos/500/300' },
+  },
+  {
+    id: 3,
+    title: 'Les Champs Libres',
+    image: { uri: 'https://picsum.photos/500/300' },
+  },
+];
 
 interface Item {
   id: string;
@@ -43,24 +61,28 @@ const MapModeScreen = ({
 }) => {
   useEffect(() => {
     setCurrentPage(currentPage);
-  }, []);
+  }, [currentPage]);
 
   return (
     <>
       <View className='absolute left-0 right-0 bottom-4 z-50 w-full' pointerEvents="box-none">
         <View className='flex-row justify-between mb-3'>
-          <Pressable onPress={onBack} className="bg-white p-2 rounded-full shadow-lg z-[60]"><Ionicons name="arrow-back" size={24} color="#262626" /></Pressable>
-          <Pressable onPress={moveToUserLocation} className="bg-white p-2 rounded-full shadow-lg z-[60]"><MaterialIcons name="my-location" size={24} color="#262626" /></Pressable>
+          <Pressable onPress={onBack} className="bg-white p-2 rounded-full shadow-lg z-[60]">
+            <Ionicons name="arrow-back" size={24} color="#262626" />
+          </Pressable>
+          <Pressable onPress={moveToUserLocation} className="bg-white p-2 rounded-full shadow-lg z-[60]">
+            <MaterialIcons name="my-location" size={24} color="#262626" />
+          </Pressable>
         </View>
         <PagerView
           style={styles.pagerView}
           initialPage={currentPage}
           className='w-full'
           onPageSelected={(e) => {
-            const position = e.nativeEvent.position;
-            setCurrentPage(position);
-            if (items[position]) {
-              moveToLocation(items[position].latitude, items[position].longitude);
+            const index = e.nativeEvent.position;
+            setCurrentPage(index);
+            if (items[index]) {
+              moveToLocation(items[index].latitude, items[index].longitude);
             }
           }}
           pointerEvents="auto"
@@ -118,6 +140,8 @@ const MapModeScreen = ({
 export default function MapsScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
   const mapRef = useRef<MapView>(null);
+  const flatListRef = useRef<FlatList>(null);
+  const scrollOffset = useRef(0);
   const tabBarHeight = useBottomTabBarHeight();
   const [currentSnapIndex, setCurrentSnapIndex] = useState(0);
   const [items, setItems] = useState<Item[]>([]);
@@ -132,13 +156,16 @@ export default function MapsScreen() {
   const [currentPage, setCurrentPage] = useState(0);
   const [lastSnapIndexBeforeMapMode, setLastSnapIndexBeforeMapMode] = useState(0);
 
-  const snapPoints = useMemo(() => [60, 210, 620], []);
+  const snapPoints = useMemo(() => [60, 400, 620], []);
 
   const handleSheetChanges = useCallback((index: number) => {
     if (index >= 0 && index < snapPoints.length) {
       setCurrentSnapIndex(index);
       if (!isMinimalUI) {
         setLastSnapIndexBeforeMapMode(index);
+      }
+      if (index === 2 && scrollOffset.current > 0) {
+        flatListRef.current?.scrollToOffset({ offset: scrollOffset.current, animated: false });
       }
     } else {
       console.warn('Invalid snap index:', index, 'Reverting to index 0');
@@ -239,7 +266,11 @@ export default function MapsScreen() {
     []
   );
 
-  const mainContent = useMemo(() => {
+  const renderContent = useCallback(() => {
+    if (currentSnapIndex === 0) {
+      return minContent;
+    }
+
     if (loading) {
       return (
         <View className="px-6 pb-6 flex-1 justify-center items-center">
@@ -264,42 +295,95 @@ export default function MapsScreen() {
       );
     }
 
-    return (
-      <TouchableWithoutFeedback onPress={() => {
-        moveToLocation(items[0].latitude, items[0].longitude);
-        setIsMinimalUI(true);
-      }}>
-        <View className="px-6 pb-6">
-          <View className="flex-row justify-between items-center w-full">
-            <View>
-              <View className="flex-row items-center">
-                <Text className="text-xl text-neutral-800 font-bold mr-1">{items[0].title}</Text>
-              </View>
-              <View className="flex-row items-center mt-1">
-                <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-                <Text className="text-sm text-neutral-600 ml-1">{items[0].address}</Text>
-              </View>
-              <Text className="font-semibold text-lg text-neutral-800 mt-1">
-                {items[0].price.toLocaleString('ko-KR')}₩
-              </Text>
-              <Text className="text-xs text-neutral-500 mt-2">
-                {items[0].distance} · {items[0].area}
-              </Text>
-            </View>
-            <Image
-              source={{ uri: items[0].imageUrl }}
-              className="w-24 h-24 rounded-lg"
-              onLoad={() => console.log('Image loaded')}
-            />
-          </View>
-        </View>
-      </TouchableWithoutFeedback>
-    );
-  }, [items, loading, error, currentRegion]);
+    const infiniteItems = currentSnapIndex === 2 ? Array(10).fill(items).flat().map((item, idx) => ({ ...item, uniqueKey: `${item.id}-${idx}` })) : items.slice(0, 2);
 
-  const renderContent = () => {
-    return currentSnapIndex === 0 ? minContent : mainContent;
-  };
+    return (
+      <FlatList
+        ref={flatListRef}
+        data={infiniteItems}
+        renderItem={({ item }) => (
+          <TouchableWithoutFeedback
+            onPress={() => {
+              moveToLocation(item.latitude, item.longitude);
+              setIsMinimalUI(true);
+            }}
+          >
+            <View className="px-6 pb-6">
+              <View className="flex-row justify-between items-center w-full">
+                <View>
+                  <View className="flex-row items-center">
+                    <Text className="text-xl text-neutral-800 font-bold mr-1">{item.title}</Text>
+                  </View>
+                  <View className="flex-row items-center mt-1">
+                    <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
+                    <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
+                  </View>
+                  <Text className="font-semibold text-lg text-neutral-800 mt-1">
+                    {item.price.toLocaleString('ko-KR')}₩
+                  </Text>
+                  <Text className="text-xs text-neutral-500 mt-2">
+                    {item.distance} · {item.area}
+                  </Text>
+                </View>
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  className="w-24 h-24 rounded-lg"
+                  onLoad={() => console.log('Image loaded')}
+                />
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        )}
+        keyExtractor={(item) => item.uniqueKey || item.id}
+        scrollEnabled={currentSnapIndex !== 0}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        ListHeaderComponent={() => (
+          <View className="w-full px-6 pt-2 mb-8">
+            <View className="flex-row items-center mb-4">
+              <Text className="text-neutral-700 font-bold text-lg mr-1">추천 게시글</Text>
+              <TouchableOpacity activeOpacity={0.7}>
+                <MaterialIcons name="auto-awesome" size={14} color="#353535" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12 }}
+            >
+              {posts.map((post) => (
+                <View
+                  key={post.id}
+                  className="w-46 h-36 rounded-lg overflow-hidden bg-white justify-end"
+                >
+                  <Image
+                    source={post.image}
+                    className="w-full h-full absolute"
+                    resizeMode="cover"
+                  />
+                  <View className="w-full py-2 px-3">
+                    <Text
+                      className="text-white text-base font-semibold"
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      style={{ width: 160, overflow: 'hidden' }}
+                    >
+                      {post.title}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+        onScroll={(e) => {
+          scrollOffset.current = e.nativeEvent.contentOffset.y;
+          console.log('Scroll position:', scrollOffset.current);
+        }}
+        scrollEventThrottle={16}
+      />
+    );
+  }, [currentSnapIndex, items, loading, error, moveToLocation, setIsMinimalUI, minContent]);
 
   const moveToUserLocation = async () => {
     if (userLocation && mapRef.current) {
@@ -379,8 +463,20 @@ export default function MapsScreen() {
     );
   }, [moveToUserLocation]);
 
+  const renderBackdrop = useCallback(
+    (props) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
+    ),
+    []
+  );
+
   return (
-    <View style={styles.container} className="relative">
+    <GestureHandlerRootView style={styles.container} className="relative">
       <View className="absolute z-50 top-20 w-full px-6" style={isMinimalUI ? { display: 'none' } : {}}>
         <Pressable onPress={handleSearchPress}>
           <View className="flex-1 flex-row items-center justify-between bg-white rounded-lg pl-6 pr-4">
@@ -437,15 +533,16 @@ export default function MapsScreen() {
         index={0}
         snapPoints={snapPoints}
         onChange={handleSheetChanges}
-        enablePanDownToClose={false}
+        enablePanDownToClose={true}
         enableDynamicSizing={false}
+        enableContentPanningGesture={currentSnapIndex !== 2}
+        enableHandlePanningGesture={!isMinimalUI}
         maxDynamicContentSize={600}
         overDragResistanceFactor={0}
         handleComponent={isMinimalUI ? null : renderHandle}
         handleIndicatorStyle={{ display: 'none' }}
         backgroundStyle={{ backgroundColor: 'white', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
         containerStyle={{ zIndex: 2000 }}
-        onAnimate={(fromIndex, toIndex) => null}
         animationConfigs={{
           duration: 250,
           damping: 80,
@@ -453,12 +550,10 @@ export default function MapsScreen() {
           mass: 0.8,
         }}
         style={isMinimalUI ? { display: 'none' } : {}}
-        enableContentPanningGesture={!isMinimalUI}
-        enableHandlePanningGesture={!isMinimalUI}
       >
-        <BottomSheetView className="items-center min-h-[200px] overflow-visible">
+        <View className="items-center min-h-[200px] overflow-visible">
           {renderContent()}
-        </BottomSheetView>
+        </View>
       </BottomSheet>
 
       {isMinimalUI && (
@@ -473,7 +568,7 @@ export default function MapsScreen() {
           />
         </View>
       )}
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
@@ -487,5 +582,8 @@ const styles = StyleSheet.create({
   },
   pagerView: {
     height: 205,
+  },
+  pagerSlide: {
+    marginHorizontal: 16,
   },
 });
