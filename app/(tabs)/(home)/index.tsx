@@ -105,7 +105,7 @@ export default function HomeScreen() {
         <View className="flex-row w-full bg-neutral-100 pt-8 px-4">
           <View className="flex-1 bg-white rounded-3xl p-6 mr-4 justify-between">
             <View>
-              <Link href={"/home/report"}>
+              <Link href={"/home/report/report"}>
                 <Text className="text-2xl font-bold text-neutral-800 mb-2">제보하기</Text>
               </Link>
               <Text className="text-lg text-neutral-600">유기동물을 발견했어요.</Text>
@@ -144,12 +144,14 @@ export default function HomeScreen() {
 
         <View className='px-6 py-4 bg-neutral-100'>
           <View className='flex-row items-center justify-between'>
-            <View className=' rounded-2xl bg-white size-32 p-4 relative'>
-              <Text className='text-neutral-800 font-bold text-xl'>동전 기부</Text>
-              <View className='absolute bottom-4 right-4'>
-                <FontAwesome5 name="coins" size={31} color="#bbbbbb" />
+            <Link href={"/home/donation/donation"}>
+              <View className=' rounded-2xl bg-white size-32 p-4 relative'>
+                <Text className='text-neutral-800 font-bold text-xl'>동전 기부</Text>
+                <View className='absolute bottom-4 right-4'>
+                  <FontAwesome5 name="coins" size={31} color="#bbbbbb" />
+                </View>
               </View>
-            </View>
+            </Link>
             <View className=' rounded-2xl bg-white size-32 p-4 relative'>
               <Text className='text-neutral-800 font-bold text-xl'>모임</Text>
               <View className='absolute bottom-4 right-4'>
