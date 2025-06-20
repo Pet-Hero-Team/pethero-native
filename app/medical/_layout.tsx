@@ -7,6 +7,7 @@ export default function MedicalLayout() {
             <Stack.Screen name="questions/[id]" />
             <Stack.Screen name="news/news" />
             <Stack.Screen name="news/[id]" />
+            <Stack.Screen name="video-call" />
         </Stack>
     );
 }

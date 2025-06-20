@@ -1,8 +1,11 @@
+import { register } from "@videosdk.live/react-native-sdk";
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../global.css';
+
+register();
 
 export default function RootLayout() {
   return (
