@@ -129,17 +129,20 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
-            <View className="bg-white rounded-2xl p-4 flex-row items-center">
-              <View className="flex-1">
-                <Text className="text-xl font-bold text-neutral-800 mb-1">내 애완동물</Text>
-                <Text className="text-base text-neutral-500">동물 정보를 기록해요.</Text>
-                <Image
-                  source={require("@/assets/images/1.png")}
-                  className="w-10 h-10 self-end"
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
+
+            <Link href="/(tabs)/(home)/my-pet" asChild>
+              <TouchableOpacity className="bg-white rounded-2xl p-4 flex-row items-center">
+                <View className="flex-1">
+                  <Text className="text-xl font-bold text-neutral-800 mb-1">내 애완동물</Text>
+                  <Text className="text-base text-neutral-500">동물 정보를 기록해요.</Text>
+                  <Image
+                    source={require("@/assets/images/1.png")}
+                    className="w-10 h-10 self-end"
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
+            </Link>
           </View>
         </View>
 
