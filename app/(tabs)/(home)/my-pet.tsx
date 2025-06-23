@@ -6,13 +6,13 @@ import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-na
 export default function MyPetScreen() {
     return (
         <SafeAreaView className="flex-1 bg-neutral-50">
-            <View className="flex-row justify-between items-center py-6 px-6">
-                <Pressable onPress={() => router.back()} hitSlop={12}>
+            <View className="flex-row items-center justify-between px-4 pb-4 pt-4 ">
+                <Pressable onPress={() => router.back()} >
                     <Ionicons name="chevron-back" size={28} color="#222" />
                 </Pressable>
                 <Text className="text-neutral-500 text-sm">아무거나</Text>
             </View>
-            <ScrollView className='px-6'>
+            <ScrollView className='px-6 pt-8'>
                 <View className="flex-row justify-between items-start">
                     <View>
                         <Text className="text-sm text-neutral-400 mb-1">강아지</Text>

@@ -1,7 +1,7 @@
 import DotPaginator from '@/components/DotPaginator';
+import { Entypo } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -148,8 +148,8 @@ export default function HomeScreen() {
 
         <View className='px-6 py-4 bg-neutral-100'>
           <View className='flex-row items-center justify-between'>
-            <Link href={"/home/donation/donation"}>
-              <View className=' rounded-2xl bg-white size-32 p-4 relative'>
+            <Link href={"/(tabs)/(home)/donation"}>
+              <View className=' rounded-2xl bg-white  size-32 p-4 relative'>
                 <Text className='text-neutral-800 font-bold text-xl'>동전 기부</Text>
                 <View className='absolute bottom-4 right-4'>
                   <FontAwesome5 name="coins" size={31} color="#bbbbbb" />
@@ -162,12 +162,15 @@ export default function HomeScreen() {
                 <MaterialIcons name="pets" size={31} color="#bbbbbb" />
               </View>
             </View>
-            <View className=' rounded-2xl bg-white size-32 p-4 relative'>
-              <Text className='text-neutral-800 font-bold text-xl'>의료 상담</Text>
-              <View className='absolute bottom-4 right-4'>
-                <FontAwesome6 name="briefcase-medical" size={31} color="#bbbbbb" />
+
+            <Link href={"/(tabs)/(home)/events"}>
+              <View className=' rounded-2xl bg-white size-32 p-4 relative'>
+                <Text className='text-neutral-800 font-bold text-xl'>이벤트</Text>
+                <View className='absolute bottom-4 right-4'>
+                  <Entypo name="megaphone" size={33} color="#bbbbbb" />
+                </View>
               </View>
-            </View>
+            </Link>
           </View>
         </View>
         <View className="w-full bg-slate-500 h-32 mt-8"></View>
