@@ -10,7 +10,7 @@ const ReportItem = () => (
         <View className='flex-1'>
             <Text className='text-lg font-bold text-neutral-800'>주황색 보더콜리를 봤었습니다.</Text>
             <Text className='leading-6 text-neutral-500 mt-1' numberOfLines={2}>
-                서울숲 공원에서 발견했구요, 목줄이 착용되어있었습니다. 이름은 적혀있지않았고 사람손을 많이 탄걸로보여요 짖지도 않고 사람을 좋아하는거같아요
+                서울숲 공원에서 목격했구요, 목줄이 착용되어있었습니다. 이름은 적혀있지않았고 사람손을 많이 탄걸로보여요 짖지도 않고 사람을 좋아하는거같아요
             </Text>
             <View className='flex-row items-center mt-4 justify-between pr-1'>
                 <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
@@ -79,7 +79,7 @@ export default function ReportsScreen() {
                     />
                     <View className='ml-6 flex-1'>
                         <Text className='text-lg text-orange-500 font-bold'>실제 유저가 올린</Text>
-                        <Text className='text-2xl font-bold'>실시간 발견현황을 확인하세요</Text>
+                        <Text className='text-2xl font-bold'>실시간 목격현황을 확인하세요</Text>
                     </View>
                 </View>
 

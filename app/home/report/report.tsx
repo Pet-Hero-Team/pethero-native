@@ -123,7 +123,7 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
         <View className="flex-1">
             {(!activeField || activeField === 'category') && (
                 <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-                    <Text className="text-2xl mb-8 font-semibold">발견한 유기동물의 타입을 선택해주세요</Text>
+                    <Text className="text-2xl mb-8 font-semibold">목격한 유기동물의 타입을 선택해주세요</Text>
                     {PET_OPTIONS.map((option) => (
                         <TouchableOpacity
                             key={option.value}
@@ -141,7 +141,7 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
             {(!activeField || activeField === 'title') && (
                 <View>
                     <Text className="text-2xl font-semibold">제목을 적어주세요</Text>
-                    <Text className="mt-3 mb-8 text-gray-600">간단하게 어디에서 어떤 동물을 발견했는지 적어주세요</Text>
+                    <Text className="mt-3 mb-8 text-gray-600">간단하게 어디에서 어떤 동물을 목격했는지 적어주세요</Text>
                     <View className="mb-4">
                         <Controller
                             control={control}

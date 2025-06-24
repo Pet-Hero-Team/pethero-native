@@ -108,7 +108,7 @@ export default function HomeScreen() {
             <TouchableOpacity className="flex-1 bg-white rounded-3xl p-6 mr-4 justify-between">
               <View>
                 <Text className="text-2xl font-bold text-neutral-800 mb-2">제보하기</Text>
-                <Text className="text-lg text-neutral-600">유기동물을 발견했어요.</Text>
+                <Text className="text-lg text-neutral-600">유기동물을 목격했어요.</Text>
               </View>
               <Image
                 source={require('@/assets/images/2.png')}

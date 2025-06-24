@@ -451,7 +451,7 @@ export default function MapsScreen() {
             </View>
             <View className="bg-white flex-row items-center border border-neutral-300 rounded-full px-4 py-3 ml-3">
               <AntDesign name="exclamationcircle" size={15} color="#525252" />
-              <Text className="text-neutral-600 ml-2 font-bold">발견</Text>
+              <Text className="text-neutral-600 ml-2 font-bold">목격</Text>
             </View>
           </View>
           <Pressable
@@ -483,7 +483,7 @@ export default function MapsScreen() {
         <Pressable onPress={handleSearchPress}>
           <View className="flex-1 flex-row items-center justify-between bg-white rounded-lg pl-6 pr-4">
             <View className="flex-row items-center py-4 text-base">
-              <Text className="text-base font-bold text-[#c7c7c7]">구조, 발견, 모임을 검색해보세요.</Text>
+              <Text className="text-base font-bold text-[#c7c7c7]">구조, 목격, 모임을 검색해보세요.</Text>
             </View>
             <Fontisto name="search" size={18} color="#737373" />
           </View>

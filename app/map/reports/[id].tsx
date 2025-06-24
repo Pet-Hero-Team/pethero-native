@@ -142,7 +142,7 @@ export default function ExhibitionDetailScreen() {
                     <Text className="text-neutral-700 leading-8">
                         흰색 꼬리를 가진 고양이입니다. 실종된 지 3일이 지났습니다. 서울숲 근처에서 마지막으로 목격되었으며, 주변 CCTV에 포착된 모습이 있습니다.
                         겁이 많고 사람을 잘 따르지 않습니다. 장신구는 없으며, 목줄도 착용하지 않았습니다. 배에 작은 상처가 있고 체중은 약 3.5kg였다가 지금은 모르겠습니다
-                        혹시라도 발견하신 분은 연락 부탁드립니다.
+                        혹시라도 목격하신 분은 연락 부탁드립니다.
                     </Text>
                 </View>
                 <View className="flex-row justify-between mt-8 bg-white">
