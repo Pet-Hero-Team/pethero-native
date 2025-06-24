@@ -5,7 +5,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -121,12 +121,14 @@ const MapModeScreen = ({
                     <Text className="text-sm text-white font-semibold ml-[1px]">3</Text>
                     <Text className="text-white text-lg font-bold text-center ml-2">제보하기</Text>
                   </Pressable>
-                  <Pressable
-                    onPress={() => moveToLocation(item.latitude, item.longitude)}
-                    className="flex-1 bg-slate-700 py-3 rounded-lg ml-2"
-                  >
-                    <Text className="text-white text-lg font-bold text-center">상세정보</Text>
-                  </Pressable>
+                  <Link href={`/map/reports/${item.id}`} asChild>
+                    <Pressable
+                      onPress={() => moveToLocation(item.latitude, item.longitude)}
+                      className="flex-1 bg-slate-700 py-3 rounded-lg ml-2"
+                    >
+                      <Text className="text-white text-lg font-bold text-center">상세정보</Text>
+                    </Pressable>
+                  </Link>
                 </View>
               </View>
             </View>
