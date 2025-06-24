@@ -79,7 +79,7 @@ export default function ReportsScreen() {
                     />
                     <View className='ml-6 flex-1'>
                         <Text className='text-lg text-orange-500 font-bold'>실제 유저가 올린</Text>
-                        <Text className='text-2xl font-bold'>실시간 제보를 확인하세요</Text>
+                        <Text className='text-2xl font-bold'>실시간 발견현황을 확인하세요</Text>
                     </View>
                 </View>
 

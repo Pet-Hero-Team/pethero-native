@@ -24,7 +24,7 @@ export default function ChatsScreen() {
               채팅에 오신걸 환영합니다!
             </Text>
             <Text className="text-neutral-600 text-center mt-3 leading-6">
-              반려동물을 찾는 제보와 함께{"\n"}여러가지 활동이 가능한 공간입니다.
+              반려동물을 찾는{"\n"}여러가지 활동이 가능한 공간입니다.
             </Text>
             <TouchableOpacity
               className='mt-6 px-4 py-2 flex-row items-center justify-center rounded-full bg-orange-200'
