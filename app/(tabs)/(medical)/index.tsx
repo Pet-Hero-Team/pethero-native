@@ -61,17 +61,19 @@ export default function MedicalScreen() {
                                 </Link>
                             </ShadowView>
                             <View className="w-3" />
-                            <ShadowView className="rounded-3xl bg-white flex-1 mx-1 justify-between py-6 px-5">
-                                <View>
-                                    <Text className="text-xl  font-bold text-neutral-700 mb-2">병원찾기</Text>
-                                    <Text className="text-neutral-500 mb-4">내 주변 병원을 찾아요.</Text>
-                                </View>
-                                <Image
-                                    source={require('@/assets/images/4.png')}
-                                    className="size-20 self-end"
-                                    resizeMode="contain"
-                                />
-                            </ShadowView>
+                            <Link href="/medical/video-call">
+                                <ShadowView className="rounded-3xl bg-white flex-1 mx-1 justify-between py-6 px-5">
+                                    <View>
+                                        <Text className="text-xl  font-bold text-neutral-700 mb-2">비대면 진료</Text>
+                                        <Text className="text-neutral-500 mb-4">전화 및 영상통화 진료 </Text>
+                                    </View>
+                                    <Image
+                                        source={require('@/assets/images/4.png')}
+                                        className="size-20 self-end"
+                                        resizeMode="contain"
+                                    />
+                                </ShadowView>
+                            </Link>
                         </View>
                     </View>
 
