@@ -99,8 +99,8 @@ export default function DonationScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <View className="flex-row items-center justify-between px-6 pt-3 pb-1">
-                <Pressable onPress={() => router.back()} hitSlop={12}>
+            <View className="flex-row items-center justify-between px-4 pb-4 pt-4 ">
+                <Pressable onPress={() => router.back()} >
                     <Ionicons name="chevron-back" size={28} color="#222" />
                 </Pressable>
                 <Ionicons name="settings-outline" size={22} color="#222" />

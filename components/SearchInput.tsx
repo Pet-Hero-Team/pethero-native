@@ -29,7 +29,7 @@ export default function SearchInput({
             <View className="flex-1 flex-row items-center text-neutral-400 justify-between ml-4 bg-neutral-100 rounded-lg pl-6 pr-4 py-4">
                 <TextInput
                     className="flex-1 text-base font-bold text-neutral-700"
-                    placeholder="구조, 제보, 모임을 검색해보세요."
+                    placeholder="구조, 목격, 모임을 검색해보세요."
                     value={searchQuery}
                     onChangeText={onChangeText}
                     autoFocus={autoFocus}

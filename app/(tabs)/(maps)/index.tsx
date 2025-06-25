@@ -5,7 +5,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -121,12 +121,14 @@ const MapModeScreen = ({
                     <Text className="text-sm text-white font-semibold ml-[1px]">3</Text>
                     <Text className="text-white text-lg font-bold text-center ml-2">제보하기</Text>
                   </Pressable>
-                  <Pressable
-                    onPress={() => moveToLocation(item.latitude, item.longitude)}
-                    className="flex-1 bg-slate-700 py-3 rounded-lg ml-2"
-                  >
-                    <Text className="text-white text-lg font-bold text-center">상세정보</Text>
-                  </Pressable>
+                  <Link href={`/map/reports/${item.id}`} asChild>
+                    <Pressable
+                      onPress={() => moveToLocation(item.latitude, item.longitude)}
+                      className="flex-1 bg-slate-700 py-3 rounded-lg ml-2"
+                    >
+                      <Text className="text-white text-lg font-bold text-center">상세정보</Text>
+                    </Pressable>
+                  </Link>
                 </View>
               </View>
             </View>
@@ -449,7 +451,7 @@ export default function MapsScreen() {
             </View>
             <View className="bg-white flex-row items-center border border-neutral-300 rounded-full px-4 py-3 ml-3">
               <AntDesign name="exclamationcircle" size={15} color="#525252" />
-              <Text className="text-neutral-600 ml-2 font-bold">제보</Text>
+              <Text className="text-neutral-600 ml-2 font-bold">목격</Text>
             </View>
           </View>
           <Pressable
@@ -481,7 +483,7 @@ export default function MapsScreen() {
         <Pressable onPress={handleSearchPress}>
           <View className="flex-1 flex-row items-center justify-between bg-white rounded-lg pl-6 pr-4">
             <View className="flex-row items-center py-4 text-base">
-              <Text className="text-base font-bold text-[#c7c7c7]">구조, 제보, 모임을 검색해보세요.</Text>
+              <Text className="text-base font-bold text-[#c7c7c7]">구조, 목격, 모임을 검색해보세요.</Text>
             </View>
             <Fontisto name="search" size={18} color="#737373" />
           </View>

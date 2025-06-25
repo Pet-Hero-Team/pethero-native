@@ -47,15 +47,18 @@ export default function MedicalScreen() {
                     <View className="px-6 pt-16">
                         <View className="flex-row items-center">
                             <ShadowView className="rounded-3xl bg-white flex-1 mx-1 justify-between py-6 px-5">
-                                <View>
-                                    <Text className="text-xl  font-bold text-neutral-700 mb-2">질문하기</Text>
-                                    <Text className="text-neutral-500 mb-4">수의사에게 물어보세요.</Text>
-                                </View>
-                                <Image
-                                    source={require('@/assets/images/5.png')}
-                                    className="size-20 self-end"
-                                    resizeMode="contain"
-                                />
+                                <Link href="/medical/questions/question">
+
+                                    <View>
+                                        <Text className="text-xl  font-bold text-neutral-700 mb-2">질문하기</Text>
+                                        <Text className="text-neutral-500 mb-4">수의사에게 물어보세요.</Text>
+                                    </View>
+                                    <Image
+                                        source={require('@/assets/images/5.png')}
+                                        className="size-20 self-end"
+                                        resizeMode="contain"
+                                    />
+                                </Link>
                             </ShadowView>
                             <View className="w-3" />
                             <Link href="/medical/video-call">

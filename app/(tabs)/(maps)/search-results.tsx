@@ -40,7 +40,7 @@ export default function SearchResultsScreen() {
         setSelectedTab(tab);
     };
 
-    const tabs = ['구조요청', '제보'];
+    const tabs = ['구조요청', '목격'];
 
     return (
         <SafeAreaView
@@ -107,7 +107,7 @@ export default function SearchResultsScreen() {
                                     >
                                         <Text className="text-base font-semibold text-neutral-800">{item.title}</Text>
                                         <Text className="text-sm text-neutral-500 mt-1">
-                                            {item.title.includes('구조') ? '긴급 구조 요청입니다.' : '제보 또는 모임 정보입니다.'}
+                                            {item.title.includes('구조') ? '긴급 구조 요청입니다.' : '목격 또는 모임 정보입니다.'}
                                         </Text>
                                     </Pressable>
                                 ))}

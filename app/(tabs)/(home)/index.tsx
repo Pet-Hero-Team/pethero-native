@@ -1,13 +1,13 @@
 import DotPaginator from '@/components/DotPaginator';
+import { Entypo } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Link } from 'expo-router';
 import { useRef, useState } from 'react';
-import { FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 
 
@@ -53,35 +53,37 @@ export default function HomeScreen() {
   };
 
   const renderReportItem = ({ item }) => (
-    <View className="flex-row items-center w-full py-5">
-      <View>
-        <Image
-          source={{ uri: 'https://picsum.photos/200/300' }}
-          className="w-28 h-28 rounded-2xl"
-        />
-      </View>
-      <View className="ml-5 flex-1">
-        <View className="flex-row items-center">
-          <Text className="text-lg text-neutral-700 font-semibold" numberOfLines={1} ellipsizeMode="tail">
-            {item.title}
-          </Text>
+    <Link href={`/map/rescues/${item.id}`}>
+      <View className="flex-row items-center w-full py-5">
+        <View>
+          <Image
+            source={{ uri: 'https://picsum.photos/200/300' }}
+            className="w-28 h-28 rounded-2xl"
+          />
         </View>
-        <View className="flex-row items-center mt-1">
-          <Text className="text-neutral-500 text-sm" numberOfLines={1} ellipsizeMode="tail">
-            {item.description}
-          </Text>
-        </View>
-        <View className="flex-row mt-4">
-          <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-            <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-            <Text className="text-xs text-neutral-600 ml-1">{item.location}</Text>
+        <View className="ml-5 flex-1">
+          <View className="flex-row items-center">
+            <Text className="text-lg text-neutral-700 font-semibold" numberOfLines={1} ellipsizeMode="tail">
+              {item.title}
+            </Text>
           </View>
-          <View className="ml-2 flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-            <Text className="text-xs text-neutral-600 ml-1">{item.type}</Text>
+          <View className="flex-row items-center mt-1">
+            <Text className="text-neutral-500 text-sm" numberOfLines={1} ellipsizeMode="tail">
+              {item.description}
+            </Text>
+          </View>
+          <View className="flex-row mt-4">
+            <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+              <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
+              <Text className="text-xs text-neutral-600 ml-1">{item.location}</Text>
+            </View>
+            <View className="ml-2 flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+              <Text className="text-xs text-neutral-600 ml-1">{item.type}</Text>
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    </Link>
   );
 
   return (
@@ -103,19 +105,20 @@ export default function HomeScreen() {
 
         </View>
         <View className="flex-row w-full bg-neutral-100 pt-8 px-4">
-          <View className="flex-1 bg-white rounded-3xl p-6 mr-4 justify-between">
-            <View>
-              <Link href={"/home/report/report"}>
+
+          <Link href="/(tabs)/(home)/reports" asChild>
+            <TouchableOpacity className="flex-1 bg-white rounded-3xl p-6 mr-4 justify-between">
+              <View>
                 <Text className="text-2xl font-bold text-neutral-800 mb-2">제보하기</Text>
-              </Link>
-              <Text className="text-lg text-neutral-600">유기동물을 발견했어요.</Text>
-            </View>
-            <Image
-              source={require('@/assets/images/2.png')}
-              className="w-24 h-24 self-end"
-              resizeMode="contain"
-            />
-          </View>
+                <Text className="text-lg text-neutral-600">유기동물을 목격했어요.</Text>
+              </View>
+              <Image
+                source={require('@/assets/images/2.png')}
+                className="w-24 h-24 self-end"
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </Link>
           <View className="flex-1 justify-between">
             <View className="bg-white rounded-2xl p-4 mb-4 flex-row items-center">
               <View className="flex-1">
@@ -128,24 +131,27 @@ export default function HomeScreen() {
                 />
               </View>
             </View>
-            <View className="bg-white rounded-2xl p-4 flex-row items-center">
-              <View className="flex-1">
-                <Text className="text-xl font-bold text-neutral-800 mb-1">내 애완동물</Text>
-                <Text className="text-base text-neutral-500">동물 정보를 기록해요.</Text>
-                <Image
-                  source={require("@/assets/images/1.png")}
-                  className="w-10 h-10 self-end"
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
+
+            <Link href="/(tabs)/(home)/my-pet" asChild>
+              <TouchableOpacity className="bg-white rounded-2xl p-4 flex-row items-center">
+                <View className="flex-1">
+                  <Text className="text-xl font-bold text-neutral-800 mb-1">내 애완동물</Text>
+                  <Text className="text-base text-neutral-500">동물 정보를 기록해요.</Text>
+                  <Image
+                    source={require("@/assets/images/1.png")}
+                    className="w-10 h-10 self-end"
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
+            </Link>
           </View>
         </View>
 
         <View className='px-6 py-4 bg-neutral-100'>
           <View className='flex-row items-center justify-between'>
-            <Link href={"/home/donation/donation"}>
-              <View className=' rounded-2xl bg-white size-32 p-4 relative'>
+            <Link href={"/(tabs)/(home)/donation"}>
+              <View className=' rounded-2xl bg-white  size-32 p-4 relative'>
                 <Text className='text-neutral-800 font-bold text-xl'>동전 기부</Text>
                 <View className='absolute bottom-4 right-4'>
                   <FontAwesome5 name="coins" size={31} color="#bbbbbb" />
@@ -158,18 +164,21 @@ export default function HomeScreen() {
                 <MaterialIcons name="pets" size={31} color="#bbbbbb" />
               </View>
             </View>
-            <View className=' rounded-2xl bg-white size-32 p-4 relative'>
-              <Text className='text-neutral-800 font-bold text-xl'>의료 상담</Text>
-              <View className='absolute bottom-4 right-4'>
-                <FontAwesome6 name="briefcase-medical" size={31} color="#bbbbbb" />
+
+            <Link href={"/(tabs)/(home)/events"}>
+              <View className=' rounded-2xl bg-white size-32 p-4 relative'>
+                <Text className='text-neutral-800 font-bold text-xl'>이벤트</Text>
+                <View className='absolute bottom-4 right-4'>
+                  <Entypo name="megaphone" size={33} color="#bbbbbb" />
+                </View>
               </View>
-            </View>
+            </Link>
           </View>
         </View>
         <View className="w-full bg-slate-500 h-32 mt-8"></View>
         <View className="px-6 bg-white pt-16 pb-6">
           <View className="flex-row items-center justify-between pb-5">
-            <Text className="text-neutral-800 text-2xl font-bold">방금 올라온 제보</Text>
+            <Text className="text-neutral-800 text-2xl font-bold">방금 올라온 목격담</Text>
             <View className="flex-row items-center">
               <MaterialIcons name="refresh" size={16} color="#a3a3a3" />
               <Text className="text-neutral-400 font-semibold ml-2">방금 전</Text>
