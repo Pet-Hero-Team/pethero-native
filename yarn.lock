@@ -843,10 +843,10 @@
   dependencies:
     "@types/json-schema" "^7.0.15"
 
-"@eslint/core@^0.15.0":
-  version "0.15.0"
-  resolved "https://registry.yarnpkg.com/@eslint/core/-/core-0.15.0.tgz#8fc04709a7b9a179d9f7d93068fc000cb8c5603d"
-  integrity sha512-b7ePw78tEWWkpgZCDYkbqDOP8dmM6qe+AOC6iuJqlq1R/0ahMAeH3qynpnqKFGkMltrp44ohV4ubGyvLX28tzw==
+"@eslint/core@^0.15.1":
+  version "0.15.1"
+  resolved "https://registry.yarnpkg.com/@eslint/core/-/core-0.15.1.tgz#d530d44209cbfe2f82ef86d6ba08760196dd3b60"
+  integrity sha512-bkOp+iumZCCbt1K1CmWf0R9pM5yKpDv+ZXtvSyQpudrI9kuFLp+bM2WOPXImuD/ceQuaa8f5pj93Y7zyECIGNA==
   dependencies:
     "@types/json-schema" "^7.0.15"
 
@@ -876,11 +876,11 @@
   integrity sha512-RBMg5FRL0I0gs51M/guSAj5/e14VQ4tpZnQNWwuDT66P14I43ItmPfIZRhO9fUVIPOAQXU47atlywZ/czoqFPA==
 
 "@eslint/plugin-kit@^0.3.1":
-  version "0.3.2"
-  resolved "https://registry.yarnpkg.com/@eslint/plugin-kit/-/plugin-kit-0.3.2.tgz#0cad96b134d23a653348e3342f485636b5ef4732"
-  integrity sha512-4SaFZCNfJqvk/kenHpI8xvN42DMaoycy4PzKc5otHxRswww1kAt82OlBuwRVLofCACCTZEcla2Ydxv8scMXaTg==
+  version "0.3.3"
+  resolved "https://registry.yarnpkg.com/@eslint/plugin-kit/-/plugin-kit-0.3.3.tgz#32926b59bd407d58d817941e48b2a7049359b1fd"
+  integrity sha512-1+WqvgNMhmlAambTvT3KPtCl/Ibr68VldY2XY40SL1CE0ZXiakFR/cbTspaF5HsnpDMvcYYoJHfl4980NBjGag==
   dependencies:
-    "@eslint/core" "^0.15.0"
+    "@eslint/core" "^0.15.1"
     levn "^0.4.1"
 
 "@expo/cli@0.24.15":
@@ -2128,17 +2128,26 @@
   integrity sha512-zl7wVEJc+hatW2Qykx6os4ZKASJ5uzEGE4qoeiK2MvyitrTFhl2x9Icv/gZsG8tpie54rmEl7Ind64hJ3RqLrQ==
 
 "@videosdk.live/react-native-sdk@^0.3.6":
-  version "0.3.6"
-  resolved "https://registry.yarnpkg.com/@videosdk.live/react-native-sdk/-/react-native-sdk-0.3.6.tgz#a5622b0f6cff07ec909c312cb72bd435fa62e2f2"
-  integrity sha512-IRIOzLfjecBRI/l3M1fSauDh0gILp+KXVCU8XqfVa1ol+jVpKRlHvjKWUTPyr9mTQcuxeAfVyARp62kTePlSfg==
+  version "0.3.7"
+  resolved "https://registry.yarnpkg.com/@videosdk.live/react-native-sdk/-/react-native-sdk-0.3.7.tgz#dd830dc6560d8d2bf8f1d529c300c45177266ed1"
+  integrity sha512-pESX5f+HtNovLaVgiUkU6B91JV2z8mRlcOESjwm2rxNJILaLPkegFWCX+walMsp5CLPbfMVzFBs8JnRWRvh1Cw==
   dependencies:
     "@videosdk.live/react-native-foreground-service" "0.0.4"
     "@videosdk.live/react-native-incallmanager" "0.1.3"
-    "@videosdk.live/react-native-webrtc" "0.0.18"
+    "@videosdk.live/react-native-webrtc" "0.0.19"
     "@videosdk.live/react-sdk" "0.3.11"
     axios "1.6.2"
 
-"@videosdk.live/react-native-webrtc@0.0.18", "@videosdk.live/react-native-webrtc@^0.0.18":
+"@videosdk.live/react-native-webrtc@0.0.19":
+  version "0.0.19"
+  resolved "https://registry.yarnpkg.com/@videosdk.live/react-native-webrtc/-/react-native-webrtc-0.0.19.tgz#980eb4503223c3b6a141c69dc6a028463abe40e5"
+  integrity sha512-777p7f2+C0eMGlo4bw0io4vsPP13m8MwUW8UVPqjAGLaSDdu4Pwx9l+KFST+RmQ/JjWpM5AuOSND4CT3dl7GIA==
+  dependencies:
+    base64-js "1.5.1"
+    debug "4.3.4"
+    event-target-shim "6.0.2"
+
+"@videosdk.live/react-native-webrtc@^0.0.18":
   version "0.0.18"
   resolved "https://registry.yarnpkg.com/@videosdk.live/react-native-webrtc/-/react-native-webrtc-0.0.18.tgz#56d765bf7177d1bf8cd15fd971630009fa3b60b8"
   integrity sha512-dDo7+yOj67Cwh/2JdsbVjatKbpL/5CXDD/KBim3Ws+YiLjASyDST/Flju8uWcAAYfrmWX96IoMEbjsCT0vnyaw==
@@ -3224,9 +3233,9 @@ ee-first@1.1.1:
   integrity sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==
 
 electron-to-chromium@^1.5.173:
-  version "1.5.173"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.173.tgz#1aeba57204fe19425921a29946ef543653f5e896"
-  integrity sha512-2bFhXP2zqSfQHugjqJIDFVwa+qIxyNApenmXTp9EjaKtdPrES5Qcn9/aSFy/NaP2E+fWG/zxKu/LBvY36p5VNQ==
+  version "1.5.174"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.5.174.tgz#c7d273755d4dc9bc4f1d192f6f2092bee42771f3"
+  integrity sha512-HE43yYdUUiJVjewV2A9EP8o89Kb4AqMKplMQP2IxEPUws1Etu/ZkdsgUDabUZ/WmbP4ZbvJDOcunvbBUPPIfmw==
 
 emoji-regex@^8.0.0:
   version "8.0.0"
