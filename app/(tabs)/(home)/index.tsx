@@ -53,35 +53,37 @@ export default function HomeScreen() {
   };
 
   const renderReportItem = ({ item }) => (
-    <View className="flex-row items-center w-full py-5">
-      <View>
-        <Image
-          source={{ uri: 'https://picsum.photos/200/300' }}
-          className="w-28 h-28 rounded-2xl"
-        />
-      </View>
-      <View className="ml-5 flex-1">
-        <View className="flex-row items-center">
-          <Text className="text-lg text-neutral-700 font-semibold" numberOfLines={1} ellipsizeMode="tail">
-            {item.title}
-          </Text>
+    <Link href={`/map/rescues/${item.id}`}>
+      <View className="flex-row items-center w-full py-5">
+        <View>
+          <Image
+            source={{ uri: 'https://picsum.photos/200/300' }}
+            className="w-28 h-28 rounded-2xl"
+          />
         </View>
-        <View className="flex-row items-center mt-1">
-          <Text className="text-neutral-500 text-sm" numberOfLines={1} ellipsizeMode="tail">
-            {item.description}
-          </Text>
-        </View>
-        <View className="flex-row mt-4">
-          <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-            <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-            <Text className="text-xs text-neutral-600 ml-1">{item.location}</Text>
+        <View className="ml-5 flex-1">
+          <View className="flex-row items-center">
+            <Text className="text-lg text-neutral-700 font-semibold" numberOfLines={1} ellipsizeMode="tail">
+              {item.title}
+            </Text>
           </View>
-          <View className="ml-2 flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-            <Text className="text-xs text-neutral-600 ml-1">{item.type}</Text>
+          <View className="flex-row items-center mt-1">
+            <Text className="text-neutral-500 text-sm" numberOfLines={1} ellipsizeMode="tail">
+              {item.description}
+            </Text>
+          </View>
+          <View className="flex-row mt-4">
+            <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+              <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
+              <Text className="text-xs text-neutral-600 ml-1">{item.location}</Text>
+            </View>
+            <View className="ml-2 flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+              <Text className="text-xs text-neutral-600 ml-1">{item.type}</Text>
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    </Link>
   );
 
   return (
@@ -176,7 +178,7 @@ export default function HomeScreen() {
         <View className="w-full bg-slate-500 h-32 mt-8"></View>
         <View className="px-6 bg-white pt-16 pb-6">
           <View className="flex-row items-center justify-between pb-5">
-            <Text className="text-neutral-800 text-2xl font-bold">방금 올라온 제보</Text>
+            <Text className="text-neutral-800 text-2xl font-bold">방금 올라온 목격담</Text>
             <View className="flex-row items-center">
               <MaterialIcons name="refresh" size={16} color="#a3a3a3" />
               <Text className="text-neutral-400 font-semibold ml-2">방금 전</Text>

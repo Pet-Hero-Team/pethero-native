@@ -39,7 +39,7 @@ const images = [
     'https://picsum.photos/1000/1003',
 ];
 
-export default function ExhibitionDetailScreen() {
+export default function ReportsDetailScreen() {
     const [activeIndex, setActiveIndex] = useState(0);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -101,13 +101,18 @@ export default function ExhibitionDetailScreen() {
                 <View className="pt-8">
                     <View className="flex-row items-center justify-between">
                         <View className="flex-row gap-2">
-                            <Text className="px-2 py-1 bg-neutral-100 rounded text-sm text-neutral-700">포메라니안</Text>
-                            <Text className="px-2 py-1 bg-neutral-100 rounded text-sm text-neutral-700">실종</Text>
+                            <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+                                <Text className="text-xs text-neutral-600 ml-1">포메라니안</Text>
+                            </View>
+                            <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+                                <Text className="text-xs text-neutral-600 ml-1">실종</Text>
+                            </View>
                         </View>
                         <View className="flex-row items-center gap-2">
                             <Ionicons name="people" size={17} color="#404040" />
                             <Text className="text-sm text-neutral-700 font-semibold">3</Text>
                         </View>
+
                     </View>
                     <Text className="text-2xl font-semibold text-neutral-800 mt-2" numberOfLines={2}>
                         흰색꼬리를 가진 고양이를 찾아주세요
