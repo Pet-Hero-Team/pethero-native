@@ -42,3 +42,4 @@ app-example
 # Ignore Android Studio files
 ios/
 android/
+.env

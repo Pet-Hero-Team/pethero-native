@@ -1,50 +1,67 @@
-// app/video-call.tsx
-import {
-    RTCView,
-    useMeeting,
-    useParticipant,
-} from "@videosdk.live/react-native-sdk";
-import { useEffect, useState } from "react";
-import { Button, StyleSheet, View } from "react-native";
+import { CallContent, StreamCall, useStreamVideoClient } from '@stream-io/video-react-native-sdk';
+import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { SafeAreaView, Text, View } from 'react-native';
 
-const VideoCallScreen = () => {
-    const [meetingId, setMeetingId] = useState(null);
+const CALL_ID = `pethero-call-${Math.random().toString(36).substring(2, 15)}`;
 
-    const token = "";
-    const meetingIdDefault = "";
-
-    const { join, leave } = useMeeting({
-        meetingId: meetingId || meetingIdDefault,
-        token,
-        participantId: "user1",
-        micEnabled: true,
-        webcamEnabled: true,
-    });
-
-    const { webcamStream } = useParticipant("user1");
+export default function QuestionsScreen() {
+    const [call, setCall] = useState(null);
+    const [error, setError] = useState(null);
+    const client = useStreamVideoClient();
 
     useEffect(() => {
-        setMeetingId(meetingIdDefault);
-    }, []);
+        if (!client) {
+            console.error('StreamVideoClient is not initialized');
+            setError('클라이언트 초기화 실패');
+            return;
+        }
+
+        console.log('Initializing call with ID:', CALL_ID);
+        const call = client.call('default', CALL_ID);
+
+        call
+            .join({ create: true })
+            .then(() => {
+                console.log('Successfully joined call:', CALL_ID);
+                setCall(call);
+            })
+            .catch((err) => {
+                console.error('Failed to join call:', err);
+                setError(`통화 연결 실패: ${err.message}`);
+            });
+
+        // Cleanup on unmount
+        return () => {
+            if (call) {
+                call.leave().catch((err) => console.error('Failed to leave call:', err));
+            }
+        };
+    }, [client]);
 
     return (
-        <View style={styles.container}>
-            {webcamStream && (
-                <RTCView
-                    streamURL={webcamStream.url}
-                    style={styles.video}
-                    objectFit="cover"
-                />
-            )}
-            <Button title="진료 시작" onPress={join} />
-            <Button title="진료 종료" onPress={leave} />
-        </View>
+        <SafeAreaView className="flex-1 bg-neutral-50">
+            <View className="flex-1">
+
+                {error ? (
+                    <Text className="text-lg text-red-600 mt-4 px-6">통화 연결 실패: {error}</Text>
+                ) : call ? (
+                    <StreamCall call={call}>
+                        <View className="flex-1 w-full h-full mt-4">
+                            <CallContent
+                                layout="grid"
+                                style={{ width: '100%', height: '100%' }}
+                                onHangupCallHandler={() => {
+                                    call.leave().catch((err) => console.error('Failed to leave call:', err));
+                                    router.back();
+                                }}
+                            />
+                        </View>
+                    </StreamCall>
+                ) : (
+                    <Text className="text-lg text-neutral-600 mt-4 px-6">통화 연결 중...</Text>
+                )}
+            </View>
+        </SafeAreaView>
     );
-};
-
-const styles = StyleSheet.create({
-    container: { flex: 1, justifyContent: "center", alignItems: "center" },
-    video: { width: "100%", height: 300, backgroundColor: "black" },
-});
-
-export default VideoCallScreen;
+}

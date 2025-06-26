@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import Constants from "expo-constants";
 import * as Location from 'expo-location';
 import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -159,6 +160,7 @@ export default function MapsScreen() {
   const [lastSnapIndexBeforeMapMode, setLastSnapIndexBeforeMapMode] = useState(0);
 
   const snapPoints = useMemo(() => [60, 400, 620], []);
+
 
   const handleSheetChanges = useCallback((index: number) => {
     if (index >= 0 && index < snapPoints.length) {
@@ -512,6 +514,7 @@ export default function MapsScreen() {
         }}
         onRegionChange={handleRegionChange}
         onRegionChangeComplete={handleRegionChangeComplete}
+        onMapReady={() => console.log('Map ready, API Key:', Constants.expoConfig?.extra?.googleMapsApiKey)}
       >
         {items.map((item) => (
           <Marker
