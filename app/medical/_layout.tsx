@@ -3,6 +3,7 @@ import { Stack } from 'expo-router/stack';
 export default function MedicalLayout() {
     return (
         <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="counsels" />
             <Stack.Screen name="questions/question" />
             <Stack.Screen name="questions/questions" />
             <Stack.Screen name="questions/[id]" />

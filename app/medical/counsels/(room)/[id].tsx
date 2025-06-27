@@ -5,11 +5,11 @@ import React, { useEffect, useState } from 'react';
 import { Dimensions, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Spinner from 'react-native-loading-spinner-overlay';
 import Toast from 'react-native-toast-message';
-import ChatView from '../../../components/ChatView';
-import CustomBottomSheet from '../../../components/CustomBottomSheet';
-import CustomCallControls, { reactions } from '../../../components/CustomCallControls';
-import CustomTopView from '../../../components/CustomTopView';
-import { useAuth } from '../../../context/AuthContext';
+import ChatView from '../../../../components/ChatView';
+import CustomBottomSheet from '../../../../components/CustomBottomSheet';
+import CustomCallControls, { reactions } from '../../../../components/CustomCallControls';
+import CustomTopView from '../../../../components/CustomTopView';
+import { useAuth } from '../../../../context/AuthContext';
 
 const WIDTH = Dimensions.get('window').width;
 const HEIGHT = Dimensions.get('window').height;
@@ -21,28 +21,29 @@ const Page = () => {
   const { client } = useAuth();
   const [call, setCall] = useState<Call | null>(null);
 
-  console.log('Received id:', id);
+  console.log('Received counsel id:', id);
+  console.log('Client available:', !!client);
 
   useEffect(() => {
     if (!client) return;
 
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity onPress={shareMeeting}>
+        <TouchableOpacity onPress={shareCounsel}>
           <Ionicons name="share-outline" size={24} color="white" />
         </TouchableOpacity>
       ),
     });
 
     const unsubscribe = client.on('all', (event: StreamVideoEvent) => {
-      console.log(event);
+      console.log('Stream event:', event);
 
       if (event.type === 'call.reaction_new') {
         console.log(`New reaction: ${event.reaction}`);
       }
 
       if (event.type === 'call.session_participant_joined') {
-        console.log(`New user joined the call: ${event.participant}`);
+        console.log(`New user joined the counsel: ${event.participant}`);
         const user = event.participant.user.name || 'Unknown';
         Toast.show({
           text1: 'User joined',
@@ -51,7 +52,7 @@ const Page = () => {
       }
 
       if (event.type === 'call.session_participant_left') {
-        console.log(`Someone left the call: ${event.participant}`);
+        console.log(`Someone left the counsel: ${event.participant}`);
         const user = event.participant.user.name || 'Unknown';
         Toast.show({
           text1: 'User left',
@@ -73,11 +74,12 @@ const Page = () => {
         const call = client.call('default', id);
         await call.join({ create: true });
         setCall(call);
+        console.log('Counsel joined:', id);
       } catch (error) {
-        console.error('Error joining call:', error);
+        console.error('Error joining counsel:', error);
         Toast.show({
           text1: 'Error',
-          text2: 'Failed to join the call',
+          text2: 'Failed to join the counsel',
         });
       }
     };
@@ -89,9 +91,9 @@ const Page = () => {
     router.back();
   };
 
-  const shareMeeting = async () => {
+  const shareCounsel = async () => {
     Share.share({
-      message: `Join my meeting: myapp://(inside)/(room)/${id}`,
+      message: `Join my counsel: myapp://medical/counsels/(room)/${id}`,
     });
   };
 

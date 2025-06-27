@@ -24,7 +24,7 @@ export const useAuth = () => {
   return useContext(AuthContext);
 };
 
-export const AuthProvider = ({ children }: any) => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [authState, setAuthState] = useState<{
     token: string | null;
     authenticated: boolean | null;
@@ -43,6 +43,7 @@ export const AuthProvider = ({ children }: any) => {
         const data = await SecureStore.getItemAsync(TOKEN_KEY);
         if (data) {
           const { token, user } = JSON.parse(data);
+          console.log('Loaded token from SecureStore:', { token, user });
           setAuthState({
             token,
             authenticated: true,
@@ -58,10 +59,14 @@ export const AuthProvider = ({ children }: any) => {
             });
             setClient(streamClient);
             console.log('StreamVideoClient initialized on startup:', user.id);
+          } else {
+            console.warn('Missing token, user.id, or STREAM_KEY:', { token, userId: user?.id, hasStreamKey: !!STREAM_KEY });
           }
+        } else {
+          console.log('No token found in SecureStore');
         }
       } catch (e) {
-        console.error('Error loading token:', e);
+        console.error('Error loading token from SecureStore:', e);
       }
       setInitialized(true);
     };
@@ -91,6 +96,7 @@ export const AuthProvider = ({ children }: any) => {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('Attempting login with:', { email });
       const result = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
@@ -101,10 +107,12 @@ export const AuthProvider = ({ children }: any) => {
 
       if (!result.ok) {
         const error = await result.json();
+        console.error('Login failed:', error);
         return { error: true, msg: error.message || 'Login failed' };
       }
 
       const json = await result.json();
+      console.log('Login response:', json);
       setAuthState({
         token: json.token,
         authenticated: true,
@@ -112,6 +120,7 @@ export const AuthProvider = ({ children }: any) => {
       });
 
       await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(json));
+      console.log('Token saved to SecureStore:', json);
       return json;
     } catch (e) {
       console.error('Login error:', e);
@@ -121,6 +130,7 @@ export const AuthProvider = ({ children }: any) => {
 
   const register = async (email: string, password: string) => {
     try {
+      console.log('Attempting register with:', { email });
       const result = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: {
@@ -131,6 +141,7 @@ export const AuthProvider = ({ children }: any) => {
 
       if (!result.ok) {
         const error = await result.json();
+        console.error('Register failed:', error);
         return { error: true, msg: error.message || 'Registration failed' };
       }
 
@@ -144,6 +155,7 @@ export const AuthProvider = ({ children }: any) => {
       });
 
       await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(json));
+      console.log('Token saved to SecureStore:', json);
       return json;
     } catch (e) {
       console.error('Register error:', e);
@@ -156,6 +168,7 @@ export const AuthProvider = ({ children }: any) => {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
       if (client) {
         await client.disconnectUser();
+        console.log('StreamVideoClient disconnected');
       }
       setAuthState({
         token: null,
@@ -163,6 +176,7 @@ export const AuthProvider = ({ children }: any) => {
         user_id: null,
       });
       setClient(null);
+      console.log('Logged out successfully');
     } catch (e) {
       console.error('Logout error:', e);
     }
