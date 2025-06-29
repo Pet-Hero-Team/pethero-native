@@ -27,6 +27,7 @@ export default {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff",
       },
+      package: "com.devscarycat.petheronative",
       edgeToEdgeEnabled: true,
       config: {
         googleMaps: {
@@ -98,6 +99,7 @@ export default {
         {
           android: {
             minSdkVersion: 24,
+            extraMavenRepos: ["$rootDir/../../../node_modules/@notifee/react-native/android/libs"],
           },
           ios: {
             deploymentTarget: "15.1",
