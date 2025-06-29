@@ -116,7 +116,6 @@ export default {
         projectId: "f8bb11da-f9b5-4738-8cd9-52162c22a64c",
       },
       googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
-      streamApiKey: process.env.STREAM_API_KEY,
     },
   },
 };
