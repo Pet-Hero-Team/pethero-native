@@ -1,8 +1,8 @@
-import { View, Text, Pressable } from 'react-native';
+import { router } from 'expo-router';
 import React from 'react';
+import { Pressable, Text } from 'react-native';
 import { useChatContext } from 'stream-chat-expo';
 import { useAuth } from '../providers/AuthProvider';
-import { router } from 'expo-router';
 
 const UserListItem = ({ user }) => {
   const { client } = useChatContext();
@@ -22,7 +22,7 @@ const UserListItem = ({ user }) => {
       onPress={onPress}
       style={{ padding: 15, backgroundColor: 'white' }}
     >
-      <Text style={{ fontWeight: '600' }}>{user.full_name}</Text>
+      <Text style={{ fontWeight: '600', color: 'black' }}>{user.full_name}</Text>
     </Pressable>
   );
 };

@@ -1,18 +1,18 @@
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Channel as ChannelType } from 'stream-chat';
-import Ionicons from '@expo/vector-icons/Ionicons';
 
+import { useStreamVideoClient } from '@stream-io/video-react-native-sdk';
+import * as Crypto from 'expo-crypto';
 import {
   Channel,
   MessageInput,
   MessageList,
   useChatContext,
 } from 'stream-chat-expo';
-import { useStreamVideoClient } from '@stream-io/video-react-native-sdk';
-import * as Crypto from 'expo-crypto';
 
 export default function ChannelScreen() {
   const [channel, setChannel] = useState<ChannelType | null>(null);
@@ -35,17 +35,20 @@ export default function ChannelScreen() {
       user_id: member.user_id,
     }));
 
-    // create a call using the channel members
-    const call = videoClient.call('default', Crypto.randomUUID());
-    await call.getOrCreate({
-      ring: true,
-      data: {
-        members,
-      },
-    });
-
-    // navigate to the call screen
-    // router.push(`/call`);
+    const callId = Crypto.randomUUID();
+    const call = videoClient.call('default', callId);
+    try {
+      await call.getOrCreate({
+        ring: true,
+        data: {
+          members,
+        },
+      });
+      await call.join(); // 전화 건 쪽에서 즉시 통화 참여
+      router.push(`/call?callId=${callId}`);
+    } catch (error) {
+      console.error('Failed to create or join call:', error);
+    }
   };
 
   if (!channel) {

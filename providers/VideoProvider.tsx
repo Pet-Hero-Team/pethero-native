@@ -1,14 +1,14 @@
 import {
-  StreamVideoClient,
   StreamVideo,
+  StreamVideoClient,
 } from '@stream-io/video-react-native-sdk';
 import { PropsWithChildren, useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { tokenProvider } from '../utils/tokenProvider';
 import { useAuth } from './AuthProvider';
-import { supabase } from '../lib/supabase';
 
-const apiKey = process.env.EXPO_PUBLIC_STREAM_API_KEY;
+const apiKey = process.env.EXPO_PUBLIC_STREAM_API_KEY!;
 
 export default function VideoProvider({ children }: PropsWithChildren) {
   const [videoClient, setVideoClient] = useState<StreamVideoClient | null>(

@@ -43,3 +43,25 @@ app-example
 ios/
 android/
 .env
+
+
+# VSCode 설정 파일
+.vscode/
+!.vscode/settings.json
+
+# Google/Firebase 관련 민감 정보
+GoogleService-Info.plist
+google-services.json
+firebase.json
+
+# Expo 및 앱 설정 파일
+app.json
+
+# Supabase 설정 및 데이터
+supabase/
+
+# 기타 유틸/설정 파일 (필요시)
+utils/setFirebaseListeners.ts
+utils/setNotifeeListeners.ts
+utils/setPushMessageHandlers.ts
+utils/staticNavigation.ts

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { FlatList, Text } from 'react-native';
+import { FlatList } from 'react-native';
+import UserListItem from '../../components/UserListItem';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../providers/AuthProvider';
-import UserListItem from '../../components/UserListItem';
 
 export default function UsersScreen() {
   const [users, setUsers] = useState([]);
@@ -13,8 +13,8 @@ export default function UsersScreen() {
       let { data: profiles, error } = await supabase
         .from('profiles')
         .select('*')
-        .neq('id', user.id); // exclude me
-
+        .neq('id', user.id);
+      console.log(profiles)
       setUsers(profiles);
     };
     fetchUsers();

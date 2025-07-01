@@ -1,9 +1,5 @@
-import {
-  StreamVideoClient,
-  StreamVideoRN,
-} from "@stream-io/video-react-native-sdk";
 import { AndroidImportance } from "@notifee/react-native";
-import { tokenProvider } from "./tokenProvider";
+import { StreamVideoClient, StreamVideoRN } from "@stream-io/video-react-native-sdk";
 
 export function setPushConfig() {
   console.log("Set push");
@@ -30,8 +26,7 @@ export function setPushConfig() {
       // configure the functions to create the texts shown in the notification
       // for incoming calls in Android.
       incomingCallNotificationTextGetters: {
-        getTitle: (createdUserName: string) =>
-          `Incoming call from ${createdUserName}`,
+        getTitle: (createdUserName: string) => `Incoming call from ${createdUserName}`,
         getBody: (_createdUserName: string) => "Tap to answer the call",
       },
     },
@@ -60,11 +55,9 @@ export function setPushConfig() {
         name: "Vadim",
       };
       return new StreamVideoClient({
-        apiKey: process.env.EXPO_PUBLIC_STREAM_API_KEY, // pass your stream api key
+        apiKey: process.env.EXPO_PUBLIC_STREAM_API_KEY!,
         user,
-        token:
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiODUxMjAzM2MtNWNlNS00YmIxLTgyMmUtY2VjYzAyZWE5N2ZhIn0.MqreLbPewrlQM6BCWtsWXVHtQkdgC5B2c0SzHZz9pWM",
-      });
+        token:process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!});
     },
   });
 }

@@ -2,11 +2,11 @@ import { PropsWithChildren, useEffect, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { StreamChat } from 'stream-chat';
 import { Chat, OverlayProvider } from 'stream-chat-expo';
-import { useAuth } from './AuthProvider';
 import { supabase } from '../lib/supabase';
 import { tokenProvider } from '../utils/tokenProvider';
+import { useAuth } from './AuthProvider';
 
-const client = StreamChat.getInstance(process.env.EXPO_PUBLIC_STREAM_API_KEY);
+const client = StreamChat.getInstance(process.env.EXPO_PUBLIC_STREAM_API_KEY!);
 
 export default function ChatProvider({ children }: PropsWithChildren) {
   const [isReady, setIsReady] = useState(false);
@@ -17,19 +17,24 @@ export default function ChatProvider({ children }: PropsWithChildren) {
       return;
     }
     console.log(profile.id);
-    tokenProvider().then(console.log);
     const connect = async () => {
-      await client.connectUser(
-        {
-          id: profile.id,
-          name: profile.full_name,
-          image: supabase.storage
-            .from('avatars')
-            .getPublicUrl(profile.avatar_url).data.publicUrl,
-        },
-        tokenProvider
-      );
-      setIsReady(true);
+      try {
+        const token = await tokenProvider();
+        console.log('Token:', token);
+        await client.connectUser(
+          {
+            id: profile.id,
+            name: profile.full_name,
+            image: supabase.storage
+              .from('avatars')
+              .getPublicUrl(profile.avatar_url).data.publicUrl,
+          },
+          token
+        );
+        setIsReady(true);
+      } catch (error) {
+        console.error('Connection error:', error);
+      }
     };
 
     connect();
