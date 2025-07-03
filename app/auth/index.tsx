@@ -11,7 +11,7 @@ export default function AuthScreen() {
                     className="size-44"
                     resizeMode="contain"
                 />
-                <View className="w-full px-10 mt-20">
+                <View className="w-full px-10 mt-36">
                     <TouchableOpacity className="w-full py-4 bg-gray-200 rounded-xl mb-4 relative overflow-hidden">
                         <View className="absolute left-4 top-0 bottom-0 justify-center">
                             <MaterialIcons name="email" size={24} color="#1e1e1e" />
@@ -47,19 +47,12 @@ export default function AuthScreen() {
                     </TouchableOpacity>
                 </View>
 
+                <View className="mt-4 flex-row items-center justify-center">
+                    <Text className="text-sm text-neutral-500 px-4">계정찾기</Text>
+                    <View className="w-px h-4 bg-neutral-200" />
+                    <Text className="text-sm text-neutral-500 px-4">수의사이신가요?</Text>
+                </View>
 
-                <View className="flex-row items-center px-10">
-                    <View className="flex-1 h-px bg-neutral-200" />
-                    <Text className="mx-4 text-base text-neutral-500 font-medium">
-                        또는
-                    </Text>
-                    <View className="flex-1 h-px bg-neutral-200" />
-                </View>
-                <View className="mt-8">
-                    <Text className='text-sm text-center text-neutral-500'>수의사이신가요?</Text>
-                    <Text className='text-sm mt-6 text-center text-neutral-500'>계정을 잃어버리셨나요?</Text>
-                    <Text className='text-sm mt-6 text-center text-neutral-500'>문의하기</Text>
-                </View>
             </View>
         </SafeAreaView>
     );
