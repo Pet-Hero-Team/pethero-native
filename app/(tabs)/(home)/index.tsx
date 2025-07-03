@@ -230,10 +230,10 @@ export default function HomeScreen() {
               <Text className="text-neutral-800 text-base ml-3">반려동물을 잃어버렸어요.</Text>
             </View>
             <View className="flex-row justify-between mt-6 pb-6">
-              <Pressable className="flex-row items-center flex-1 justify-center">
+              <Link href={"/auth"} className="flex-row items-center flex-1 justify-center">
                 <Feather name="clipboard" size={18} color="#262626" />
                 <Text className="text-neutral-800 text-base ml-2">이용방법</Text>
-              </Pressable>
+              </Link>
               <View className="w-px bg-neutral-300 mx-2" />
               <Pressable className="flex-row items-center flex-1 justify-center">
                 <Feather name="message-square" size={18} color="#262626" />

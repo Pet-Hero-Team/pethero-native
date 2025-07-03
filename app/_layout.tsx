@@ -20,6 +20,7 @@ export default function RootLayout() {
         <StreamVideo client={client}>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen name="chat" options={{ headerShown: false }} />
             <Stack.Screen name="home" options={{ headerShown: false }} />
             <Stack.Screen name="medical" options={{ headerShown: false }} />
