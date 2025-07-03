@@ -1,5 +1,6 @@
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
-import { Image, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AuthScreen() {
     return (
@@ -46,7 +47,29 @@ export default function AuthScreen() {
                         </Text>
                     </TouchableOpacity>
                 </View>
-
+                <AppleAuthentication.AppleAuthenticationButton
+                    buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+                    buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                    cornerRadius={5}
+                    style={styles.button}
+                    onPress={async () => {
+                        try {
+                            const credential = await AppleAuthentication.signInAsync({
+                                requestedScopes: [
+                                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+                                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
+                                ],
+                            });
+                            // signed in
+                        } catch (e) {
+                            if (e.code === 'ERR_REQUEST_CANCELED') {
+                                // handle that the user canceled the sign-in flow
+                            } else {
+                                // handle other errors
+                            }
+                        }
+                    }}
+                />
                 <View className="mt-4 flex-row items-center justify-center">
                     <Text className="text-sm text-neutral-500 px-4">계정찾기</Text>
                     <View className="w-px h-4 bg-neutral-200" />
@@ -57,3 +80,17 @@ export default function AuthScreen() {
         </SafeAreaView>
     );
 }
+
+
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    button: {
+        width: 200,
+        height: 44,
+    },
+});

@@ -21,6 +21,7 @@
     "@stream-io/react-native-webrtc": "^125.3.1",
     "@stream-io/video-react-native-sdk": "^1.17.1",
     "expo": "~53.0.9",
+    "expo-apple-authentication": "~7.2.4",
     "expo-blur": "~14.1.4",
     "expo-build-properties": "~0.14.6",
     "expo-constants": "~17.1.6",
