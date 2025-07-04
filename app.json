@@ -52,6 +52,12 @@
       "expo-apple-authentication",
       "expo-router",
       [
+        "@react-native-kakao/core",
+        {
+          "nativeAppKey": "8127f697abae9a812bf8ed378133d7c6"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
@@ -99,7 +105,10 @@
         {
           "android": {
             "minSdkVersion": 24,
-            "extraMavenRepos": ["$rootDir/../../../node_modules/@notifee/react-native/android/libs"]
+            "extraMavenRepos": [
+              "$rootDir/../../../node_modules/@notifee/react-native/android/libs",
+              "https://devrepo.kakao.com/nexus/content/groups/public/"
+            ]
           },
           "ios": {
             "deploymentTarget": "15.1"

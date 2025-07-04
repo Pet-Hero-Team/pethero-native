@@ -1,8 +1,18 @@
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import { login } from "@react-native-kakao/user";
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AuthScreen() {
+    const onKakaoLogin = async () => {
+        try {
+            const res = await login();
+            console.log("카카오 로그인 성공:", res);
+        } catch (error) {
+            console.error("카카오 로그인 에러:", error);
+        }
+    };
+
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="flex-1 items-center justify-center">
@@ -24,7 +34,10 @@ export default function AuthScreen() {
                     </TouchableOpacity>
 
 
-                    <TouchableOpacity className="w-full py-4 bg-yellow-300 rounded-xl mb-4 relative overflow-hidden">
+                    <TouchableOpacity
+                        className="w-full py-4 bg-yellow-300 rounded-xl mb-4 relative overflow-hidden"
+                        onPress={onKakaoLogin}
+                    >
                         <View className="absolute left-4 top-0 bottom-0 justify-center">
                             <Image
                                 source={require("@/assets/images/kakao.png")}
@@ -36,7 +49,6 @@ export default function AuthScreen() {
                             카카오톡으로 계속하기
                         </Text>
                     </TouchableOpacity>
-
 
                     <TouchableOpacity className="w-full py-4 bg-black rounded-xl mb-8 relative overflow-hidden">
                         <View className="absolute left-4 top-0 bottom-0 justify-center">
@@ -60,12 +72,12 @@ export default function AuthScreen() {
                                     AppleAuthentication.AppleAuthenticationScope.EMAIL,
                                 ],
                             });
-                            // signed in
+
                         } catch (e) {
                             if (e.code === 'ERR_REQUEST_CANCELED') {
-                                // handle that the user canceled the sign-in flow
+
                             } else {
-                                // handle other errors
+
                             }
                         }
                     }}
