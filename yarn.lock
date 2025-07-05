@@ -1455,6 +1455,13 @@
   dependencies:
     "@radix-ui/react-compose-refs" "1.1.2"
 
+"@react-native-community/datetimepicker@8.4.1":
+  version "8.4.1"
+  resolved "https://registry.yarnpkg.com/@react-native-community/datetimepicker/-/datetimepicker-8.4.1.tgz#a798c237f01ae96658d5c93292fc2955dad04a83"
+  integrity sha512-DrK+CUS5fZnz8dhzBezirkzQTcNDdaXer3oDLh0z4nc2tbdIdnzwvXCvi8IEOIvleoc9L95xS5tKUl0/Xv71Mg==
+  dependencies:
+    invariant "^2.2.4"
+
 "@react-native-community/netinfo@11.4.1":
   version "11.4.1"
   resolved "https://registry.yarnpkg.com/@react-native-community/netinfo/-/netinfo-11.4.1.tgz#a3c247aceab35f75dd0aa4bfa85d2be5a4508688"
@@ -5580,6 +5587,11 @@ mkdirp@^3.0.1:
   resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-3.0.1.tgz#e44e4c5607fb279c168241713cc6e0fea9adcb50"
   integrity sha512-+NsyUUAZDmo6YVHzL/stxSu3t9YS1iljliy3BSDrXJ/dkn1KYdmtZODGGjLcc9XLgVVpH4KshHB8XmZgMhaBXg==
 
+moment@^2.19.1:
+  version "2.30.1"
+  resolved "https://registry.yarnpkg.com/moment/-/moment-2.30.1.tgz#f8c91c07b7a786e30c59926df530b4eac96974ae"
+  integrity sha512-uEmtNhbDOrWPFS+hdjFCBfy9f2YoyzRpwcl+DqpC6taX21FzsTLQVbMV/W7PzNSX6x/bhC1zA3c2UQ5NzH6how==
+
 ms@2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.0.0.tgz#5608aeadfc00be6c2901df5f9861788de0d597c8"
@@ -6344,6 +6356,13 @@ react-native-webview@13.13.5:
   dependencies:
     escape-string-regexp "^4.0.0"
     invariant "2.2.4"
+
+react-native-wheel-pick@^1.2.5:
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/react-native-wheel-pick/-/react-native-wheel-pick-1.2.5.tgz#4f17daf8f13cd4a216ef056d74b7575783a774d7"
+  integrity sha512-rk+0YZ37UbTd+32NBqmdJ2WRx4GS9Pm4FxfFOx/BqpFTLjkByMwKAvxWsKrv+kooFQPPKUU+MRxS2syZm33eYg==
+  dependencies:
+    moment "^2.19.1"
 
 react-native@*:
   version "0.80.1"

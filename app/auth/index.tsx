@@ -1,6 +1,7 @@
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import { login } from "@react-native-kakao/user";
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { Link } from 'expo-router';
 import { Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AuthScreen() {
@@ -23,7 +24,7 @@ export default function AuthScreen() {
                     resizeMode="contain"
                 />
                 <View className="w-full px-10 mt-36">
-                    <TouchableOpacity className="w-full py-4 bg-gray-200 rounded-xl mb-4 relative overflow-hidden">
+                    <Link href={"/auth/auth-info"} className="w-full py-4 bg-gray-200 rounded-xl mb-4 relative overflow-hidden">
                         <View className="absolute left-4 top-0 bottom-0 justify-center">
                             <MaterialIcons name="email" size={24} color="#1e1e1e" />
                         </View>
@@ -31,7 +32,7 @@ export default function AuthScreen() {
                         <Text className="text-lg font-medium text-neutral-900 text-center">
                             이메일로 계속하기
                         </Text>
-                    </TouchableOpacity>
+                    </Link>
 
 
                     <TouchableOpacity
