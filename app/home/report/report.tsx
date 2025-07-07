@@ -356,7 +356,7 @@ const SubmitButton = ({ disabled, onPress }) => (
     </TouchableOpacity>
 );
 
-export default function ReportScreen() {
+export default function ReportsScreen() {
     const [currentStep, setCurrentStep] = useState(0);
     const [reportType, setReportType] = useState('sighting');
     const unitValue = 'g';

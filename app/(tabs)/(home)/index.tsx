@@ -119,18 +119,21 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
           </Link>
+
           <View className="flex-1 justify-between">
-            <View className="bg-white rounded-2xl p-4 mb-4 flex-row items-center">
-              <View className="flex-1">
-                <Text className="text-xl font-bold text-neutral-800 mb-1">구조요청</Text>
-                <Text className="text-base text-neutral-500 pb-3">동물을 찾고있어요.</Text>
-                <Image
-                  source={require("@/assets/images/3.png")}
-                  className="w-10 h-10 self-end"
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
+            <Link href="/(tabs)/(home)/rescues" asChild>
+              <TouchableOpacity className="bg-white rounded-2xl p-4 mb-4 flex-row items-center">
+                <View className="flex-1">
+                  <Text className="text-xl font-bold text-neutral-800 mb-1">구조요청</Text>
+                  <Text className="text-base text-neutral-500 pb-3">동물을 찾고있어요.</Text>
+                  <Image
+                    source={require("@/assets/images/3.png")}
+                    className="w-10 h-10 self-end"
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
+            </Link>
 
             <Link href="/(tabs)/(home)/my-pet" asChild>
               <TouchableOpacity className="bg-white rounded-2xl p-4 flex-row items-center">
