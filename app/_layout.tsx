@@ -1,5 +1,6 @@
 
-import { initializeKakaoSDK } from "@react-native-kakao/core";
+import { useAuth } from '@/hooks/useAuth';
+import { initializeKakaoSDK } from '@react-native-kakao/core';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -7,12 +8,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../global.css';
 
-
 export default function RootLayout() {
-  const kakaoNativeAppKey = process.env.EXPO_PUBLIC_NATIVE_APP_KEY || "";
+  const kakaoNativeAppKey = process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY || '';
+  const { user, session, loading } = useAuth();
+
   useEffect(() => {
     initializeKakaoSDK(kakaoNativeAppKey);
   }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>

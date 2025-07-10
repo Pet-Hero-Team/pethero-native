@@ -1,13 +1,14 @@
 import DotPaginator from '@/components/DotPaginator';
+import { signOut } from '@/utils/auth';
 import { Entypo } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useRef, useState } from 'react';
-import { FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 
 
@@ -50,6 +51,15 @@ export default function HomeScreen() {
   const scrollToPage = (pageIndex) => {
     flatListRef.current?.scrollToOffset({ offset: pageIndex * (pageWidth + pageSpacing), animated: true });
     setActivePage(pageIndex);
+  };
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.replace('/auth/signin');
+    } catch (error) {
+      Alert.alert('로그아웃 실패', (error as Error).message);
+      console.error('로그아웃 에러:', (error as Error).message);
+    }
   };
 
   const renderReportItem = ({ item }) => (
@@ -238,7 +248,7 @@ export default function HomeScreen() {
                 <Text className="text-neutral-800 text-base ml-2">이용방법</Text>
               </Link>
               <View className="w-px bg-neutral-300 mx-2" />
-              <Pressable className="flex-row items-center flex-1 justify-center">
+              <Pressable className="flex-row items-center flex-1 justify-center" onPress={handleLogout}>
                 <Feather name="message-square" size={18} color="#262626" />
                 <Text className="text-neutral-800 text-base ml-2">1:1상담</Text>
               </Pressable>
