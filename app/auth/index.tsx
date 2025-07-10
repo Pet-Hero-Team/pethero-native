@@ -1,12 +1,11 @@
-
-import { signInWithKakao } from '@/utils/auth';
+import { supabase } from '@/supabase/supabase';
+import { signInWithApple, signInWithKakao } from '@/utils/auth';
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link, router } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert, Image, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { supabase } from '../../supabase/supabase';
 
 export default function AuthScreen() {
     useEffect(() => {
@@ -42,6 +41,33 @@ export default function AuthScreen() {
         } catch (error) {
             Alert.alert('카카오 로그인 실패', (error as Error).message);
             console.error('카카오 로그인 에러:', (error as Error).message);
+        }
+    };
+
+    const handleAppleLogin = async () => {
+        try {
+            await signInWithApple();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert('Apple 로그인 실패', '사용자 정보가 없습니다.');
+                return;
+            }
+
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (profileError && profileError.code !== 'PGRST116') {
+                Alert.alert('프로필 조회 실패', profileError.message);
+                return;
+            }
+
+            router.push(profile ? '/(tabs)/(home)' : '/auth/auth-info');
+        } catch (error) {
+            Alert.alert('Apple 로그인 실패', (error as Error).message);
+            console.error('Apple 로그인 에러:', (error as Error).message);
         }
     };
 
@@ -81,23 +107,7 @@ export default function AuthScreen() {
 
                     <TouchableOpacity
                         className="w-full py-4 bg-black rounded-xl mb-8 relative overflow-hidden"
-                        onPress={async () => {
-                            try {
-                                const credential = await AppleAuthentication.signInAsync({
-                                    requestedScopes: [
-                                        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                                        AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                                    ],
-                                });
-                                console.log('Apple 로그인 성공:', credential);
-                            } catch (e: any) {
-                                if (e.code === 'ERR_REQUEST_CANCELED') {
-                                    console.log('Apple 로그인 취소');
-                                } else {
-                                    console.error('Apple 로그인 에러:', e);
-                                }
-                            }
-                        }}
+                        onPress={handleAppleLogin}
                     >
                         <View className="absolute left-4 top-0 bottom-0 justify-center">
                             <AntDesign name="apple1" size={22} color="white" />
@@ -112,23 +122,7 @@ export default function AuthScreen() {
                     buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
                     cornerRadius={5}
                     style={styles.button}
-                    onPress={async () => {
-                        try {
-                            const credential = await AppleAuthentication.signInAsync({
-                                requestedScopes: [
-                                    AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-                                    AppleAuthentication.AppleAuthenticationScope.EMAIL,
-                                ],
-                            });
-                            console.log('Apple 로그인 성공:', credential);
-                        } catch (e: any) {
-                            if (e.code === 'ERR_REQUEST_CANCELED') {
-                                console.log('Apple 로그인 취소');
-                            } else {
-                                console.error('Apple 로그인 에러:', e);
-                            }
-                        }
-                    }}
+                    onPress={handleAppleLogin}
                 />
                 <View className="mt-4 flex-row items-center justify-center">
                     <Text className="text-sm text-neutral-500 px-4">계정찾기</Text>

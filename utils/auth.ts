@@ -1,6 +1,7 @@
+import { supabase } from "@/supabase/supabase";
 import { login } from "@react-native-kakao/user";
 import { User } from "@supabase/supabase-js";
-import { supabase } from "../supabase/supabase";
+import * as AppleAuthentication from "expo-apple-authentication";
 
 interface KakaoLoginToken {
   accessToken: string;
@@ -65,6 +66,60 @@ export async function signInWithKakao(): Promise<void> {
   } catch (error) {
     console.error("카카오 로그인 전체 에러:", (error as Error).message);
     throw new Error(`카카오 로그인 에러: ${(error as Error).message}`);
+  }
+}
+
+export async function signInWithApple(): Promise<void> {
+  try {
+    const credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+    });
+    console.log("Apple login response:", credential);
+
+    if (!credential.identityToken) throw new Error("Apple identityToken이 반환되지 않았습니다.");
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: "apple",
+      token: credential.identityToken,
+    });
+
+    if (error) {
+      console.error("Supabase signInWithIdToken error:", error.message);
+      throw new Error(`Apple 로그인 실패: ${error.message}. Supabase Apple provider 설정을 확인하세요.`);
+    }
+
+    console.log("Supabase response:", { user: data.user, session: data.session });
+
+    const user: User | null = data.user;
+    if (!user) throw new Error("사용자 정보 없음");
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile && !profileError) {
+      const fullName = credential.fullName
+        ? `${credential.fullName.givenName || ""} ${credential.fullName.familyName || ""}`.trim()
+        : null;
+      const { error: insertError } = await supabase.from("profiles").insert({
+        id: user.id,
+        username: user.email || `apple_${user.id.slice(0, 8)}`,
+        full_name: fullName || user.user_metadata?.name || null,
+        avatar_url: user.user_metadata?.avatar_url || null,
+      });
+      if (insertError) throw new Error(`프로필 생성 실패: ${insertError.message}`);
+    }
+  } catch (error) {
+    console.error("Apple 로그인 전체 에러:", (error as Error).message);
+    if ((error as any).code === "ERR_REQUEST_CANCELED") {
+      throw new Error("Apple 로그인 취소");
+    }
+    throw new Error(`Apple 로그인 에러: ${(error as Error).message}`);
   }
 }
 
