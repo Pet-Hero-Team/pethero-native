@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native'; // Image 컴포넌트 추가
+import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
 export default function QuestionsDetailScreen() {
     return (

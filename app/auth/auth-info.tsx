@@ -1,9 +1,13 @@
 import { PET_OPTIONS } from '@/constants/pet';
+import { validationRules } from '@/constants/validationRules';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/supabase/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const ITEM_HEIGHT = 40;
 const VISIBLE_ITEMS = 5;
@@ -13,39 +17,78 @@ function getDaysInMonth(year, monthIdx) {
     return new Date(year, monthIdx + 1, 0).getDate();
 }
 
-function TitleStep({ control, getValues, errors, trigger }) {
-    const [isTitleFocused, setIsTitleFocused] = useState(false);
+function UsernameStep({ control, getValues, errors, trigger }) {
+    const [isUsernameFocused, setIsUsernameFocused] = useState(false);
     return (
         <View>
             <Text className="text-2xl font-semibold">닉네임을 정해주세요</Text>
-            <Text className="mt-3 mb-8 text-gray-600">* 추후에 언제든 수정 가능합니다</Text>
+            <Text className="mt-3 mb-8 text-gray-600">* 한글, 영문, 숫자, 밑줄(_)만 사용, 3~30자</Text>
             <View className="mb-4">
                 <Controller
                     control={control}
-                    name="title"
+                    name="username"
                     defaultValue=""
-                    rules={{ required: '닉네임을 입력해주세요.', maxLength: 30 }}
+                    rules={validationRules.username}
                     render={({ field: { onChange, value } }) => (
                         <TextInput
                             value={value}
                             onChangeText={(text) => {
                                 onChange(text);
-                                trigger('title');
+                                trigger('username');
                             }}
-                            onFocus={() => setIsTitleFocused(true)}
-                            onBlur={() => setIsTitleFocused(false)}
+                            onFocus={() => setIsUsernameFocused(true)}
+                            onBlur={() => setIsUsernameFocused(false)}
                             placeholder="예시) 뽀삐주인"
                             placeholderTextColor="#9ca3af"
-                            className={`bg-white pb-5 text-xl border-b ${isTitleFocused ? 'border-gray-400' : 'border-gray-200'}`}
+                            className={`bg-white pb-5 text-xl border-b ${isUsernameFocused ? 'border-gray-400' : 'border-gray-200'}`}
                             maxLength={30}
                         />
                     )}
                 />
                 <View className="flex-row items-center mt-2 justify-end">
-                    <Text className="text-right text-sm text-gray-500">{getValues('title').length}/30</Text>
+                    <Text className="text-right text-sm text-gray-500">{getValues('username').length}/30</Text>
                 </View>
-                {errors.title && (
-                    <Text className="text-red-500 mt-2">{errors.title.message}</Text>
+                {errors.username && (
+                    <Text className="text-red-500 mt-2">{errors.username.message}</Text>
+                )}
+            </View>
+        </View>
+    );
+}
+
+function PetNameStep({ control, getValues, errors, trigger }) {
+    const [isPetNameFocused, setIsPetNameFocused] = useState(false);
+    return (
+        <View>
+            <Text className="text-2xl font-semibold">반려동물 이름을 정해주세요</Text>
+            <Text className="mt-3 mb-8 text-gray-600">* 한글, 영문, 숫자, 밑줄(_)만 사용, 1~30자</Text>
+            <View className="mb-4">
+                <Controller
+                    control={control}
+                    name="petName"
+                    defaultValue=""
+                    rules={validationRules.petName}
+                    render={({ field: { onChange, value } }) => (
+                        <TextInput
+                            value={value}
+                            onChangeText={(text) => {
+                                onChange(text);
+                                trigger('petName');
+                            }}
+                            onFocus={() => setIsPetNameFocused(true)}
+                            onBlur={() => setIsPetNameFocused(false)}
+                            placeholder="예시) 뽀삐"
+                            placeholderTextColor="#9ca3af"
+                            className={`bg-white pb-5 text-xl border-b ${isPetNameFocused ? 'border-gray-400' : 'border-gray-200'}`}
+                            maxLength={30}
+                        />
+                    )}
+                />
+                <View className="flex-row items-center mt-2 justify-end">
+                    <Text className="text-right text-sm text-gray-500">{getValues('petName').length}/30</Text>
+                </View>
+                {errors.petName && (
+                    <Text className="text-red-500 mt-2">{errors.petName.message}</Text>
                 )}
             </View>
         </View>
@@ -67,7 +110,7 @@ function ImageUploadStep({ control, setValue, getValues }) {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                alert('갤러리 접근 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
+                Alert.alert('권한 필요', '갤러리 접근 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
                 return;
             }
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -79,7 +122,7 @@ function ImageUploadStep({ control, setValue, getValues }) {
                 setImage(result.assets[0].uri);
             }
         } catch (error) {
-            alert('이미지 선택 중 오류가 발생했습니다.');
+            Alert.alert('오류', '이미지 선택 중 오류가 발생했습니다.');
         }
     };
 
@@ -343,6 +386,7 @@ const SubmitButton = ({ disabled, onPress }) => (
 );
 
 export default function ReportScreen() {
+    const { user } = useAuth();
     const today = new Date();
     const initialYear = today.getFullYear();
     const initialMonth = today.getMonth();
@@ -357,7 +401,8 @@ export default function ReportScreen() {
 
     const { control, handleSubmit, setValue, getValues, formState: { errors }, trigger } = useForm({
         defaultValues: {
-            title: '',
+            username: '',
+            petName: '',
             image: null,
             category: '',
             birthday: '',
@@ -379,7 +424,7 @@ export default function ReportScreen() {
     const dayRef = useRef(null);
 
     useEffect(() => {
-        if (currentStep === 4) {
+        if (currentStep === steps.findIndex(step => step.name === 'birthday')) {
             setTimeout(() => {
                 if (yearRef.current) yearRef.current.scrollTo({ y: years.indexOf(selectedYear) * ITEM_HEIGHT, animated: true });
                 if (monthRef.current) monthRef.current.scrollTo({ y: selectedMonth * ITEM_HEIGHT, animated: true });
@@ -389,30 +434,34 @@ export default function ReportScreen() {
     }, [currentStep, selectedYear, selectedMonth, selectedDay, days.length]);
 
     const steps = [
-        { name: 'title', label: '닉네임' },
-        { name: 'image', label: '프로필 사진 업로드' },
+        { name: 'username', label: '닉네임' },
         { name: 'reportType', label: '애완동물 유무' },
+        { name: 'petName', label: '반려동물 이름' },
+        { name: 'image', label: '프로필 사진 업로드' },
         { name: 'category', label: '애완동물 종류' },
         { name: 'birthday', label: '생일' },
     ];
 
     const isLastStep = () => {
         if (reportType === 'protection') {
-            return currentStep === 2;
+            return currentStep === steps.findIndex(step => step.name === 'image');
         }
         return currentStep === steps.length - 1;
     };
 
     const isNextDisabled = () => {
         const currentStepName = steps[currentStep]?.name;
-        if (currentStepName === 'title') {
-            return !getValues('title');
+        if (currentStepName === 'username') {
+            return !getValues('username');
+        }
+        if (currentStepName === 'petName') {
+            return reportType === 'sighting' && !getValues('petName');
         }
         if (currentStepName === 'category') {
             return !getValues('category');
         }
         if (currentStepName === 'birthday' && !birthdayUnknown) {
-            return !selectedYear || !selectedMonth || !selectedDay;
+            return !selectedYear || selectedMonth === null || !selectedDay;
         }
         return false;
     };
@@ -420,13 +469,16 @@ export default function ReportScreen() {
     const handleNext = async () => {
         const currentStepName = steps[currentStep]?.name;
         let isValid = true;
-        if (currentStepName === 'title') {
-            isValid = await trigger('title');
+        if (currentStepName === 'username') {
+            isValid = await trigger('username');
+        } else if (currentStepName === 'petName' && reportType === 'sighting') {
+            isValid = await trigger('petName');
         } else if (currentStepName === 'category') {
             isValid = await trigger('category');
         }
         if (isValid) {
             if (currentStepName === 'reportType' && reportType === 'protection') {
+                setCurrentStep(steps.findIndex(step => step.name === 'image'));
                 return;
             }
             setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
@@ -434,27 +486,80 @@ export default function ReportScreen() {
     };
 
     const handlePrevious = () => {
+        if (currentStep === steps.findIndex(step => step.name === 'image') && reportType === 'protection') {
+            setCurrentStep(steps.findIndex(step => step.name === 'reportType'));
+            return;
+        }
         setCurrentStep((prev) => Math.max(prev - 1, 0));
     };
 
-    const onSubmit = (data) => {
-        let birthday = '';
-        if (reportType === 'sighting' && !birthdayUnknown) {
-            const month = String(selectedMonth + 1).padStart(2, "0");
-            const day = String(selectedDay).padStart(2, "0");
-            birthday = `${selectedYear}-${month}-${day}`;
-        } else if (birthdayUnknown) {
-            birthday = '기억나지 않음';
+    const onSubmit = async (data) => {
+        try {
+            if (!user) {
+                Alert.alert('오류', '사용자 인증 정보가 없습니다.');
+                router.push('/auth');
+                return;
+            }
+
+
+            const { data: existingProfile, error: checkError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('username', data.username)
+                .neq('id', user.id)
+                .single();
+            if (checkError && checkError.code !== 'PGRST116') {
+                throw new Error(`닉네임 확인 실패: ${checkError.message}`);
+            }
+            if (existingProfile) {
+                throw new Error('이미 사용 중인 닉네임입니다.');
+            }
+
+            let birthday = '';
+            if (reportType === 'sighting' && !birthdayUnknown) {
+                const month = String(selectedMonth + 1).padStart(2, "0");
+                const day = String(selectedDay).padStart(2, "0");
+                birthday = `${selectedYear}-${month}-${day}`;
+            } else if (birthdayUnknown) {
+                birthday = '기억나지 않음';
+            }
+
+
+            const { error: profileError } = await supabase.from('profiles').upsert({
+                id: user.id,
+                username: data.username,
+                avatar_url: data.image || null,
+                has_pet: reportType === 'sighting',
+                updated_at: new Date().toISOString(),
+            });
+            if (profileError) {
+                if (profileError.message.includes('profiles_username_check')) {
+                    throw new Error('닉네임은 한글, 영문, 숫자, 밑줄(_)만 사용 가능하며 3~30자여야 합니다.');
+                }
+                throw new Error(`프로필 생성 실패: ${profileError.message}`);
+            }
+
+
+            if (reportType === 'sighting') {
+                const { error: petError } = await supabase.from('pets').insert({
+                    user_id: user.id,
+                    name: data.petName,
+                    category: data.category,
+                    birthday,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                });
+                if (petError) throw new Error(`반려동물 등록 실패: ${petError.message}`);
+            }
+
+            router.push('/(tabs)/(home)');
+        } catch (error) {
+            Alert.alert('제출 실패', (error as Error).message);
         }
-        console.log('제출된 데이터:', {
-            ...data,
-            reportType,
-            birthday,
-        });
     };
 
     const renderProgressBar = () => {
-        const totalSteps = reportType === 'protection' ? 3 : 5;
+        const totalSteps = reportType === 'protection' ? 3 : 6;
         const progress = ((currentStep + 1) / totalSteps) * 100;
         return (
             <View className="w-full h-2 bg-gray-200 rounded-full mt-4 mb-6">
@@ -467,21 +572,13 @@ export default function ReportScreen() {
         const step = steps[currentStep];
         if (!step) return null;
         switch (step.name) {
-            case 'title':
+            case 'username':
                 return (
-                    <TitleStep
+                    <UsernameStep
                         control={control}
                         getValues={getValues}
                         errors={errors}
                         trigger={trigger}
-                    />
-                );
-            case 'image':
-                return (
-                    <ImageUploadStep
-                        control={control}
-                        setValue={setValue}
-                        getValues={getValues}
                     />
                 );
             case 'reportType':
@@ -489,6 +586,23 @@ export default function ReportScreen() {
                     <ReportTypeStep
                         reportType={reportType}
                         setReportType={setReportType}
+                    />
+                );
+            case 'petName':
+                return reportType === 'sighting' ? (
+                    <PetNameStep
+                        control={control}
+                        getValues={getValues}
+                        errors={errors}
+                        trigger={trigger}
+                    />
+                ) : null;
+            case 'image':
+                return (
+                    <ImageUploadStep
+                        control={control}
+                        setValue={setValue}
+                        getValues={getValues}
                     />
                 );
             case 'category':
@@ -535,7 +649,7 @@ export default function ReportScreen() {
                     {renderProgressBar()}
                     <Text className="text-xl font-bold mb-4 text-gray-400">
                         <Text className="text-gray-800">{currentStep + 1}</Text>
-                        {` / ${reportType === 'protection' ? 3 : 5}`}
+                        {` / ${reportType === 'protection' ? 3 : 6}`}
                     </Text>
                     {renderStep()}
                 </View>
@@ -566,9 +680,3 @@ export default function ReportScreen() {
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    pagerView: {
-        height: 64,
-    },
-});

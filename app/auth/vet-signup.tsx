@@ -2,7 +2,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { signUpVet } from '../../utils/auth';
+import { signUpVet } from '../../supabase/utils/auth';
 
 export default function VetSignUpScreen() {
     const [email, setEmail] = useState<string>('');

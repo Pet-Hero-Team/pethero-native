@@ -1,7 +1,6 @@
-
 import { useAuth } from '@/hooks/useAuth';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -15,6 +14,12 @@ export default function RootLayout() {
   useEffect(() => {
     initializeKakaoSDK(kakaoNativeAppKey);
   }, []);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace('/auth');
+    }
+  }, [user, loading]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
