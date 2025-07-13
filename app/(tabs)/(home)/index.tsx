@@ -1,5 +1,5 @@
 import DotPaginator from '@/components/DotPaginator';
-import { signOut } from '@/supabase/utils/auth';
+import { signOut } from '@/utils/auth';
 import { Entypo } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
