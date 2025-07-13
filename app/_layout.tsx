@@ -1,10 +1,12 @@
 import { useAuth } from '@/hooks/useAuth';
+import { toastConfig } from '@/utils/toast';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import '../global.css';
 
 export default function RootLayout() {
@@ -34,6 +36,7 @@ export default function RootLayout() {
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />
+        <Toast config={toastConfig} />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

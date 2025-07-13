@@ -2,7 +2,6 @@ import { supabase } from '@/supabase/supabase';
 import { signInWithApple, signInWithKakao } from '@/utils/auth';
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { Link, router } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert, Image, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
@@ -81,13 +80,6 @@ export default function AuthScreen() {
                             Apple로 계속하기
                         </Text>
                     </TouchableOpacity>
-                    <AppleAuthentication.AppleAuthenticationButton
-                        buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-                        buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-                        cornerRadius={5}
-                        style={{ width: 200, height: 44 }}
-                        onPress={() => handleSocialLogin(signInWithApple)}
-                    />
                     <View className="mt-4 flex-row items-center justify-center">
                         <Text className="text-sm text-neutral-500 px-4">계정찾기</Text>
                         <View className="w-px h-4 bg-neutral-200" />

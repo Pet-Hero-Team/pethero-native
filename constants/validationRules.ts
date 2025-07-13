@@ -36,4 +36,35 @@ export const validationRules = {
         ["dog", "cat", "bird", "minipet", "reptile", "other"].includes(value) || "유효한 반려동물 종류를 선택해주세요.",
     },
   },
+  reportTitle: {
+    required: "제목을 입력해주세요.",
+    minLength: {
+      value: 3,
+      message: "제목은 최소 3자 이상이어야 합니다.",
+    },
+    maxLength: {
+      value: 30,
+      message: "제목은 최대 30자까지 가능합니다.",
+    },
+    pattern: {
+      value: /^[a-zA-Z0-9가-힣\s.,!?]+$/,
+      message: "제목은 한글, 영문, 숫자, 공백, 기본 구두점만 사용할 수 있습니다.",
+    },
+  },
+  reportDetails: {
+    maxLength: {
+      value: 500,
+      message: "상세 정보는 최대 500자까지 가능합니다.",
+    },
+  },
+  reportLocation: {
+    required: "위치를 지정해주세요.",
+    validate: {
+      hasCoordinates: (value) =>
+        (value && typeof value.latitude === "number" && typeof value.longitude === "number") ||
+        "유효한 위치를 지정해주세요.",
+      hasAddress: (value) =>
+        (value && typeof value.address === "string" && value.address.length > 0) || "주소를 입력해주세요.",
+    },
+  },
 };
