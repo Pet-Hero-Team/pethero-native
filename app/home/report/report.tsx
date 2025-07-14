@@ -450,7 +450,6 @@ export default function ReportsScreen() {
     const handlePrevious = () => {
         setCurrentStep((prev) => Math.max(prev - 1, 0));
     };
-
     const onSubmit = async (data) => {
         try {
             if (!user) {
@@ -460,8 +459,9 @@ export default function ReportsScreen() {
                     text2: '로그인이 필요합니다.',
                     position: 'top',
                     visibilityTime: 3000,
+                    onShow: () => console.log('Toast shown: 인증 오류'),
+                    onHide: () => console.log('Toast hidden: 인증 오류'),
                 });
-                console.log('Toast: 인증 오류');
                 router.push('/auth');
                 return;
             }
@@ -524,16 +524,7 @@ export default function ReportsScreen() {
                 }
             }
 
-            Toast.show({
-                type: 'success',
-                text1: '제보 등록 완료',
-                text2: '제보가 성공적으로 등록되었습니다!',
-                position: 'top',
-                visibilityTime: 3000,
-            });
-            console.log('Toast: 제보 등록 완료');
-
-            // 폼 초기화 및 내비게이션 리셋
+            // 폼 초기화
             reset({
                 category: '',
                 title: '',
@@ -543,7 +534,18 @@ export default function ReportsScreen() {
             });
             setCurrentStep(0);
             setReportType('sighted');
-            router.replace('/(tabs)/(home)'); // 스택 리셋하여 홈으로 이동
+
+            // 토스트 호출 후 즉시 홈으로 이동
+            Toast.show({
+                type: 'success',
+                text1: '제보 등록 완료',
+                text2: '제보가 성공적으로 등록되었습니다!',
+                position: 'top',
+                visibilityTime: 3000,
+                onShow: () => console.log('Toast shown: 제보 등록 완료'),
+                onHide: () => console.log('Toast hidden: 제보 등록 완료'),
+            });
+            router.replace('/(tabs)/(home)'); // 루트의 Toast가 (tabs)/home에서 표시
         } catch (error) {
             Toast.show({
                 type: 'error',
@@ -551,6 +553,8 @@ export default function ReportsScreen() {
                 text2: (error as Error).message,
                 position: 'top',
                 visibilityTime: 3000,
+                onShow: () => console.log('Toast shown: 제보 등록 실패'),
+                onHide: () => console.log('Toast hidden: 제보 등록 실패'),
             });
             console.log('Toast: 제보 등록 실패', error.message);
         }
@@ -647,7 +651,6 @@ export default function ReportsScreen() {
                     </View>
                 </View>
             </KeyboardAvoidingView>
-            <Toast />
         </SafeAreaView>
     );
 };
