@@ -1,4 +1,6 @@
+
 import DotPaginator from '@/components/DotPaginator';
+import { supabase } from '@/supabase/supabase';
 import { signOut } from '@/utils/auth';
 import { Entypo } from '@expo/vector-icons';
 import Feather from '@expo/vector-icons/Feather';
@@ -6,38 +8,52 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useQuery } from '@tanstack/react-query';
 import { Link, router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
+const fetchReports = async () => {
+  const { data, error } = await supabase
+    .from('reports')
+    .select(`
+      id,
+      title,
+      description,
+      address,
+      animal_type,
+      reports_images (url)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(9);
+  if (error) throw new Error(`제보 조회 실패: ${error.message}`);
 
-
-const reportData = [
-  { id: '1', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '2', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '3', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '4', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '5', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '6', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '7', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '8', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-  { id: '9', title: '골든리트리버를 데리고 있습니다!', description: '서울공원에서 목걸이를 하고 있던 강아..', location: '합정동', type: '강아지' },
-];
-
-const numColumns = 4;
+  return data.map(report => ({
+    id: report.id,
+    title: report.title,
+    description: report.description || '설명 없음',
+    location: report.address || '위치 정보 없음',
+    type: report.animal_type || '미지정',
+    image: report.reports_images?.[0]?.url || null,
+  }));
+};
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
-  const boxSize = (width - numColumns * 8) / numColumns;
+  const boxSize = (width - 4 * 8) / 4;
   const [activePage, setActivePage] = useState(0);
   const flatListRef = useRef(null);
 
+  const { data: reports = [], isLoading, error } = useQuery({
+    queryKey: ['reports'],
+    queryFn: fetchReports,
+  });
+
   const itemsPerPage = 3;
   const paginatedData = [];
-  for (let i = 0; i < reportData.length; i += itemsPerPage) {
-    paginatedData.push(reportData.slice(i, i + itemsPerPage));
+  for (let i = 0; i < reports.length; i += itemsPerPage) {
+    paginatedData.push(reports.slice(i, i + itemsPerPage));
   }
-
 
   const pageWidth = width * 0.92 - 48;
   const pageSpacing = 24;
@@ -52,6 +68,7 @@ export default function HomeScreen() {
     flatListRef.current?.scrollToOffset({ offset: pageIndex * (pageWidth + pageSpacing), animated: true });
     setActivePage(pageIndex);
   };
+
   const handleLogout = async () => {
     try {
       await signOut();
@@ -66,10 +83,15 @@ export default function HomeScreen() {
     <Link href={`/map/rescues/${item.id}`}>
       <View className="flex-row items-center w-full py-5">
         <View>
-          <Image
-            source={{ uri: 'https://picsum.photos/200/300' }}
-            className="w-28 h-28 rounded-2xl"
-          />
+          {item.image ? (
+            <Image
+              source={{ uri: item.image }}
+              className="w-28 h-28 rounded-2xl"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-28 h-28 bg-white rounded-2xl" />
+          )}
         </View>
         <View className="ml-5 flex-1">
           <View className="flex-row items-center">
@@ -112,10 +134,8 @@ export default function HomeScreen() {
               <Ionicons name="search" size={28} color="black" />
             </Pressable>
           </View>
-
         </View>
         <View className="flex-row w-full bg-neutral-100 pt-8 px-4">
-
           <Link href="/(tabs)/(home)/reports" asChild>
             <TouchableOpacity className="flex-1 bg-white rounded-3xl p-6 mr-4 justify-between">
               <View>
@@ -129,7 +149,6 @@ export default function HomeScreen() {
               />
             </TouchableOpacity>
           </Link>
-
           <View className="flex-1 justify-between">
             <Link href="/(tabs)/(home)/rescues" asChild>
               <TouchableOpacity className="bg-white rounded-2xl p-4 mb-4 flex-row items-center">
@@ -144,7 +163,6 @@ export default function HomeScreen() {
                 </View>
               </TouchableOpacity>
             </Link>
-
             <Link href="/(tabs)/(home)/my-pet" asChild>
               <TouchableOpacity className="bg-white rounded-2xl p-4 flex-row items-center">
                 <View className="flex-1">
@@ -160,26 +178,24 @@ export default function HomeScreen() {
             </Link>
           </View>
         </View>
-
         <View className='px-6 py-4 bg-neutral-100'>
           <View className='flex-row items-center justify-between'>
             <Link href={"/(tabs)/(home)/donation"}>
-              <View className=' rounded-2xl bg-white  size-32 p-4 relative'>
+              <View className='rounded-2xl bg-white size-32 p-4 relative'>
                 <Text className='text-neutral-800 font-bold text-xl'>동전 기부</Text>
                 <View className='absolute bottom-4 right-4'>
                   <FontAwesome5 name="coins" size={31} color="#bbbbbb" />
                 </View>
               </View>
             </Link>
-            <View className=' rounded-2xl bg-white size-32 p-4 relative'>
+            <View className='rounded-2xl bg-white size-32 p-4 relative'>
               <Text className='text-neutral-800 font-bold text-xl'>모임</Text>
               <View className='absolute bottom-4 right-4'>
                 <MaterialIcons name="pets" size={31} color="#bbbbbb" />
               </View>
             </View>
-
             <Link href={"/(tabs)/(home)/events"}>
-              <View className=' rounded-2xl bg-white size-32 p-4 relative'>
+              <View className='rounded-2xl bg-white size-32 p-4 relative'>
                 <Text className='text-neutral-800 font-bold text-xl'>이벤트</Text>
                 <View className='absolute bottom-4 right-4'>
                   <Entypo name="megaphone" size={33} color="#bbbbbb" />
@@ -198,47 +214,50 @@ export default function HomeScreen() {
             </View>
           </View>
           <View>
-            <FlatList
-              ref={flatListRef}
-              data={paginatedData}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={pageWidth + pageSpacing}
-              snapToAlignment="start"
-              decelerationRate="fast"
-              onMomentumScrollEnd={onScrollEnd}
-              renderItem={({ item }) => (
-                <View style={{ width: pageWidth, marginRight: pageSpacing }}>
-                  <FlatList
-                    data={item}
-                    renderItem={renderReportItem}
-                    keyExtractor={(report) => report.id}
-                    scrollEnabled={false}
-                  />
-                </View>
-              )}
-              keyExtractor={(_, index) => index.toString()}
-            />
+            {isLoading ? (
+              <Text className="text-neutral-600 text-center">로딩 중...</Text>
+            ) : error ? (
+              <Text className="text-red-500 text-center">오류: {(error as Error).message}</Text>
+            ) : (
+              <FlatList
+                ref={flatListRef}
+                data={paginatedData}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                snapToInterval={pageWidth + pageSpacing}
+                snapToAlignment="start"
+                decelerationRate="fast"
+                onMomentumScrollEnd={onScrollEnd}
+                renderItem={({ item }) => (
+                  <View style={{ width: pageWidth, marginRight: pageSpacing }}>
+                    <FlatList
+                      data={item}
+                      renderItem={renderReportItem}
+                      keyExtractor={(report) => report.id}
+                      scrollEnabled={false}
+                    />
+                  </View>
+                )}
+                keyExtractor={(_, index) => index.toString()}
+              />
+            )}
             <View className="pt-6 items-center">
               <DotPaginator total={paginatedData.length} active={activePage} onPress={scrollToPage} />
             </View>
           </View>
         </View>
-        <View className="px-6 pt-8 pb-20 mt-8 ">
+        <View className="px-6 pt-8 pb-20 mt-8">
           <Text className="text-neutral-800 text-2xl pb-6 font-bold">자주 묻는 질문</Text>
           <View className="rounded-2xl border border-neutral-200 bg-white px-6">
-
             <View className="flex-row items-center border-b border-neutral-200 py-5">
               <Feather name="message-circle" size={20} color="#5B81FF" />
               <Text className="text-neutral-800 text-base ml-3">반려동물을 잃어버렸어요.</Text>
             </View>
-
             <View className="flex-row items-center border-b border-neutral-200 py-5">
               <Feather name="message-circle" size={20} color="#5B81FF" />
               <Text className="text-neutral-800 text-base ml-3">반려동물을 잃어버렸어요.</Text>
             </View>
-
-            <View className="flex-row items-center  border-b border-neutral-200 py-5">
+            <View className="flex-row items-center border-b border-neutral-200 py-5">
               <Feather name="message-circle" size={20} color="#5B81FF" />
               <Text className="text-neutral-800 text-base ml-3">반려동물을 잃어버렸어요.</Text>
             </View>
@@ -259,4 +278,3 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-

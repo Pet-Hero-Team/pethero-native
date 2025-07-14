@@ -3,17 +3,18 @@ import { validationRules } from '@/constants/validationRules';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { router, useNavigation } from 'expo-router';
 import { debounce } from 'lodash';
 import React, { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import Toast from 'react-native-toast-message';
 
-const FormSection = ({ activeField, reportType, control, setValue, getValues, errors, trigger }) => {
+const FormSection = ({ activeField, reportType, control, setValue, getValues, errors, trigger, isLoading }) => {
     const [isTitleFocused, setIsTitleFocused] = useState(false);
     const [isDetailsFocused, setIsDetailsFocused] = useState(false);
     const [userLocation, setUserLocation] = useState(null);
@@ -134,13 +135,15 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
                 <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
                     <Text className="text-2xl mb-8 font-semibold">목격한 유기동물의 타입을 선택해주세요</Text>
                     {PET_OPTIONS.map((option) => (
-                        <TouchableOpacity
+                        <Pressable
                             key={option.value}
                             className={`mb-4 px-5 py-6 rounded-3xl ${getValues('category') === option.value ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'} border`}
                             onPress={() => handleCategorySelect(option.value)}
+                            disabled={isLoading}
+                            style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                         >
                             <Text className="text-lg font-semibold">{option.label}</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     ))}
                     {errors.category && (
                         <Text className="text-red-500 mt-2">{errors.category.message}</Text>
@@ -170,6 +173,7 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
                                     placeholderTextColor="#9ca3af"
                                     className={`bg-white pb-5 text-xl border-b ${isTitleFocused ? 'border-gray-400' : 'border-gray-200'}`}
                                     maxLength={30}
+                                    editable={!isLoading}
                                 />
                             )}
                         />
@@ -214,6 +218,7 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
                                     className={`flex-1 bg-white p-4 text-xl border rounded-xl ${isDetailsFocused ? 'border-gray-400' : 'border-gray-200'}`}
                                     style={{ textAlignVertical: 'top' }}
                                     maxLength={500}
+                                    editable={!isLoading}
                                 />
                             )}
                         />
@@ -233,12 +238,14 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
                         <Text className="text-lg text-gray-600 flex-1 mr-2" numberOfLines={2}>
                             {centerAddress}
                         </Text>
-                        <TouchableOpacity
+                        <Pressable
                             className="bg-orange-500 p-2 rounded-xl"
                             onPress={moveToUserLocation}
+                            disabled={isLoading}
+                            style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                         >
                             <Ionicons name="location-outline" size={24} color="white" />
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
                     <View className="flex-1 rounded-xl overflow-hidden">
                         <MapView
@@ -254,6 +261,8 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
                                 longitudeDelta: 0.0121,
                             }}
                             onRegionChangeComplete={handleRegionChangeComplete}
+                            scrollEnabled={!isLoading}
+                            zoomEnabled={!isLoading}
                         />
                         <View style={styles.pinContainer}>
                             <Ionicons name="location-sharp" size={40} color="#ff0000" />
@@ -268,7 +277,7 @@ const FormSection = ({ activeField, reportType, control, setValue, getValues, er
     );
 };
 
-const ImageUploadSection = ({ control, setValue, getValues }) => {
+const ImageUploadSection = ({ control, setValue, getValues, isLoading }) => {
     const [images, setImages] = useState(getValues('images') || []);
 
     useEffect(() => {
@@ -342,39 +351,46 @@ const ImageUploadSection = ({ control, setValue, getValues }) => {
                                 className="w-full h-40 rounded-xl"
                                 resizeMode="cover"
                             />
-                            <TouchableOpacity
+                            <Pressable
                                 className="absolute top-2 right-2 bg-neutral-800 rounded-full p-1"
                                 onPress={() => removeImage(uri)}
+                                disabled={isLoading}
+                                style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                             >
                                 <Ionicons name="close" size={16} color="white" />
-                            </TouchableOpacity>
+                            </Pressable>
                         </View>
                     </View>
                 ))}
                 {images.length < 5 && (
-                    <TouchableOpacity
+                    <Pressable
                         className={`${images.length === 0 ? 'w-full p-1' : 'w-1/2 p-1'}`}
                         onPress={pickImage}
+                        disabled={isLoading}
+                        style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                     >
                         <View className="bg-gray-100 rounded-xl items-center justify-center h-40">
                             <Ionicons name="add" size={24} color="#9ca3af" />
                             <Text className="text-lg text-gray-600">이미지 추가</Text>
                         </View>
-                    </TouchableOpacity>
+                    </Pressable>
                 )}
             </View>
         </View>
     );
 };
 
-const SubmitButton = ({ disabled, onPress }) => (
-    <TouchableOpacity
-        className={`py-4 rounded-xl flex-1 ${disabled ? 'bg-gray-300' : 'bg-orange-500'}`}
-        disabled={disabled}
+const SubmitButton = ({ disabled, onPress, isLoading }) => (
+    <Pressable
+        className={`py-4 rounded-xl flex-1 ${disabled || isLoading ? 'bg-gray-300' : 'bg-orange-500'}`}
+        disabled={disabled || isLoading}
         onPress={onPress}
+        style={({ pressed }) => ({ opacity: pressed && !(disabled || isLoading) ? 0.7 : 1 })}
     >
-        <Text className="text-white font-semibold text-center">등록</Text>
-    </TouchableOpacity>
+        <Text className="text-white font-semibold text-center">
+            {isLoading ? '업로드 중...' : '등록'}
+        </Text>
+    </Pressable>
 );
 
 export default function ReportsScreen() {
@@ -382,6 +398,7 @@ export default function ReportsScreen() {
     const navigation = useNavigation();
     const [currentStep, setCurrentStep] = useState(0);
     const [reportType, setReportType] = useState('sighted');
+    const [isLoading, setIsLoading] = useState(false);
     const { control, handleSubmit, setValue, getValues, formState: { errors }, trigger, reset } = useForm({
         defaultValues: {
             category: '',
@@ -401,7 +418,6 @@ export default function ReportsScreen() {
         ...(reportType === 'sighted' ? [{ name: 'location', label: '목격 장소' }] : []),
     ];
 
-    // 화면 진입 시 폼 및 단계 초기화
     useEffect(() => {
         reset({
             category: '',
@@ -450,50 +466,31 @@ export default function ReportsScreen() {
     const handlePrevious = () => {
         setCurrentStep((prev) => Math.max(prev - 1, 0));
     };
+
     const onSubmit = async (data) => {
+        setIsLoading(true);
+        const startTime = Date.now();
         try {
             if (!user) {
-                Toast.show({
-                    type: 'error',
-                    text1: '인증 오류',
-                    text2: '로그인이 필요합니다.',
-                    position: 'top',
-                    visibilityTime: 3000,
-                    onShow: () => console.log('Toast shown: 인증 오류'),
-                    onHide: () => console.log('Toast hidden: 인증 오류'),
-                });
-                router.push('/auth');
-                return;
+                throw new Error('로그인이 필요합니다.');
             }
 
-            // Supabase Storage에 이미지 업로드
-            const imageUrls = [];
-            for (const [index, uri] of data.images.entries()) {
-                const response = await fetch(uri);
-                const blob = await response.blob();
-                const fileName = `report_${user.id}_${Date.now()}_${index}.jpg`;
-                const { error: uploadError } = await supabase.storage
-                    .from('reports')
-                    .upload(fileName, blob, { contentType: 'image/jpeg' });
-                if (uploadError) {
-                    throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
-                }
-                const { data: urlData } = supabase.storage
-                    .from('reports')
-                    .getPublicUrl(fileName);
-                if (!urlData.publicUrl) {
-                    throw new Error('이미지 URL 생성 실패');
-                }
-                imageUrls.push(urlData.publicUrl);
+            const { data: authData, error: authError } = await supabase.auth.getUser();
+            if (authError || !authData.user) {
+                throw new Error(`인증 실패: ${authError?.message || '사용자 정보 없음'}`);
+            }
+            const authUid = authData.user.id;
+            console.log(`User ID: ${user.id}, Auth UID: ${authUid}`);
+            if (user.id !== authUid) {
+                throw new Error('사용자 ID 불일치');
             }
 
-            // reports 테이블에 삽입
             const reportPayload = {
                 user_id: user.id,
                 title: data.title,
                 description: data.details || null,
                 animal_type: data.category,
-                sighting_type: reportType, // 'sighted' 또는 'protected'
+                sighting_type: reportType,
                 latitude: reportType === 'sighted' ? data.location?.latitude : 0,
                 longitude: reportType === 'sighted' ? data.location?.longitude : 0,
                 address: reportType === 'sighted' ? data.location?.address : '',
@@ -506,25 +503,88 @@ export default function ReportsScreen() {
                 .select()
                 .single();
             if (reportError) {
+                console.error(`Report insert error: ${JSON.stringify(reportError)}`);
                 throw new Error(`제보 생성 실패: ${reportError.message}`);
             }
+            console.log(`Report inserted: ${reportData.id}`);
 
-            // reports_images 테이블에 삽입
+            const batchSize = 3;
+            const imageUrls = [];
+            for (let i = 0; i < data.images.length; i += batchSize) {
+                const batchStartTime = Date.now();
+                const batch = data.images.slice(i, i + batchSize);
+                const batchPromises = batch.map(async (uri, index) => {
+                    const globalIndex = i + index;
+                    console.log(`Processing image ${globalIndex}: ${uri}`);
+
+                    const manipResult = await ImageManipulator.manipulateAsync(
+                        uri,
+                        [{ resize: { width: 800 } }],
+                        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+                    );
+                    console.log(`Compressed image: ${manipResult.uri}, size: ${manipResult.width}x${manipResult.height}`);
+
+                    const response = await fetch(manipResult.uri);
+                    const arrayBuffer = await response.arrayBuffer();
+                    console.log(`ArrayBuffer size: ${arrayBuffer.byteLength} bytes`);
+
+                    if (arrayBuffer.byteLength === 0) {
+                        throw new Error(`이미지 데이터가 비어 있습니다: ${uri}`);
+                    }
+
+                    const contentType = 'image/jpeg';
+                    const fileName = `report_${user.id}_${Date.now()}_${globalIndex}.jpg`;
+                    console.log(`Uploading ${fileName}`);
+
+                    Toast.show({
+                        type: 'info',
+                        text1: `이미지 업로드 중 (${globalIndex + 1}/${data.images.length})`,
+                        text2: `파일: ${fileName}`,
+                        position: 'top',
+                        visibilityTime: 1500,
+                    });
+
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('reports')
+                        .upload(fileName, arrayBuffer, { contentType });
+                    if (uploadError) {
+                        console.error(`Upload error for ${fileName}: ${JSON.stringify(uploadError)}`);
+                        throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
+                    }
+                    console.log(`Upload success: ${fileName}`);
+
+                    const { data: urlData } = supabase.storage
+                        .from('reports')
+                        .getPublicUrl(fileName);
+                    if (!urlData.publicUrl) {
+                        throw new Error(`이미지 URL 생성 실패: ${fileName}`);
+                    }
+                    console.log(`Public URL: ${urlData.publicUrl}`);
+                    return urlData.publicUrl;
+                });
+
+                const batchUrls = await Promise.all(batchPromises);
+                imageUrls.push(...batchUrls);
+                console.log(`Batch ${i / batchSize} completed in ${Date.now() - batchStartTime}ms`);
+            }
+
             if (imageUrls.length > 0) {
                 const imageInserts = imageUrls.map((url) => ({
                     report_id: reportData.id,
                     url,
                     created_at: new Date().toISOString(),
                 }));
+                console.log(`Inserting images: ${JSON.stringify(imageInserts)}`);
                 const { error: imageError } = await supabase
                     .from('reports_images')
                     .insert(imageInserts);
                 if (imageError) {
+                    console.error(`Images insert error: ${JSON.stringify(imageError)}`);
                     throw new Error(`이미지 레코드 삽입 실패: ${imageError.message}`);
                 }
+                console.log(`Inserted ${imageInserts.length} images to reports_images`);
             }
 
-            // 폼 초기화
             reset({
                 category: '',
                 title: '',
@@ -535,28 +595,25 @@ export default function ReportsScreen() {
             setCurrentStep(0);
             setReportType('sighted');
 
-            // 토스트 호출 후 즉시 홈으로 이동
             Toast.show({
                 type: 'success',
                 text1: '제보 등록 완료',
-                text2: '제보가 성공적으로 등록되었습니다!',
+                text2: `업로드 완료 (${data.images.length}장, ${Date.now() - startTime}ms)`,
                 position: 'top',
                 visibilityTime: 3000,
-                onShow: () => console.log('Toast shown: 제보 등록 완료'),
-                onHide: () => console.log('Toast hidden: 제보 등록 완료'),
             });
-            router.replace('/(tabs)/(home)'); // 루트의 Toast가 (tabs)/home에서 표시
+            router.replace('/(tabs)/(home)');
         } catch (error) {
+            console.error('Error in onSubmit:', error);
             Toast.show({
                 type: 'error',
                 text1: '제보 등록 실패',
                 text2: (error as Error).message,
                 position: 'top',
                 visibilityTime: 3000,
-                onShow: () => console.log('Toast shown: 제보 등록 실패'),
-                onHide: () => console.log('Toast hidden: 제보 등록 실패'),
             });
-            console.log('Toast: 제보 등록 실패', error.message);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -574,24 +631,28 @@ export default function ReportsScreen() {
         if (!step) return null;
         switch (step.name) {
             case 'images':
-                return <ImageUploadSection control={control} setValue={setValue} getValues={getValues} />;
+                return <ImageUploadSection control={control} setValue={setValue} getValues={getValues} isLoading={isLoading} />;
             default:
                 return (
                     <View className="mb-4 flex-1">
                         {step.name === 'details' && (
                             <View className="flex-row mb-6">
-                                <TouchableOpacity
+                                <Pressable
                                     onPress={() => setReportType('sighted')}
                                     className={`flex-1 p-4 rounded-l-xl ${reportType === 'sighted' ? 'bg-orange-500' : 'bg-gray-100'}`}
+                                    disabled={isLoading}
+                                    style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                                 >
                                     <Text className={`text-center font-semibold ${reportType === 'sighted' ? 'text-white' : 'text-gray-600'}`}>목격됨</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                                </Pressable>
+                                <Pressable
                                     onPress={() => setReportType('protected')}
                                     className={`flex-1 p-4 rounded-r-xl ${reportType === 'protected' ? 'bg-orange-500' : 'bg-gray-100'}`}
+                                    disabled={isLoading}
+                                    style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                                 >
                                     <Text className={`text-center font-semibold ${reportType === 'protected' ? 'text-white' : 'text-gray-600'}`}>보호 중</Text>
-                                </TouchableOpacity>
+                                </Pressable>
                             </View>
                         )}
                         <FormSection
@@ -602,6 +663,7 @@ export default function ReportsScreen() {
                             getValues={getValues}
                             errors={errors}
                             trigger={trigger}
+                            isLoading={isLoading}
                         />
                     </View>
                 );
@@ -609,16 +671,33 @@ export default function ReportsScreen() {
     };
 
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-white" pointerEvents={isLoading ? 'none' : 'auto'}>
+            <Modal
+                visible={isLoading}
+                transparent={true}
+                animationType="fade"
+                statusBarTranslucent={true}
+            >
+                <View className="flex-1 bg-black/70 justify-center items-center">
+                    <View className="bg-white p-6 rounded-xl">
+                        <ActivityIndicator size="large" color="#f97316" />
+                        <Text className="mt-4 text-lg font-semibold text-gray-800">업로드 중...</Text>
+                    </View>
+                </View>
+            </Modal>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 className="flex-1 bg-white"
             >
                 <View className="flex-1 px-6">
                     <View className="flex-row justify-end mt-4">
-                        <TouchableOpacity onPress={() => router.back()}>
+                        <Pressable
+                            onPress={() => router.back()}
+                            disabled={isLoading}
+                            style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
+                        >
                             <Ionicons name="close" size={24} color="#51555c" />
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
                     {renderProgressBar()}
                     <Text className="text-xl font-bold mb-4 text-gray-400">
@@ -630,23 +709,30 @@ export default function ReportsScreen() {
                 <View className="px-6 pb-8 bg-white">
                     <View className="flex-row">
                         {currentStep > 0 && (
-                            <TouchableOpacity
-                                className="bg-gray-100 py-4 rounded-xl flex-[2] mr-2"
+                            <Pressable
+                                className={`bg-gray-100 py-4 rounded-xl flex-[2] mr-2 ${isLoading ? 'opacity-50' : ''}`}
                                 onPress={handlePrevious}
+                                disabled={isLoading}
+                                style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                             >
                                 <Text className="text-black font-semibold text-center">이전</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                         )}
                         {isLastStep() ? (
-                            <SubmitButton disabled={isNextDisabled()} onPress={handleSubmit(onSubmit)} />
-                        ) : (
-                            <TouchableOpacity
-                                className={`py-4 rounded-xl ${isNextDisabled() ? 'bg-gray-300' : 'bg-orange-500'} ${currentStep === 0 ? 'flex-1' : 'flex-[8]'}`}
-                                onPress={handleNext}
+                            <SubmitButton
                                 disabled={isNextDisabled()}
+                                onPress={handleSubmit(onSubmit)}
+                                isLoading={isLoading}
+                            />
+                        ) : (
+                            <Pressable
+                                className={`py-4 rounded-xl ${isNextDisabled() || isLoading ? 'bg-gray-300' : 'bg-orange-500'} ${currentStep === 0 ? 'flex-1' : 'flex-[8]'}`}
+                                onPress={handleNext}
+                                disabled={isNextDisabled() || isLoading}
+                                style={({ pressed }) => ({ opacity: pressed && !(isNextDisabled() || isLoading) ? 0.7 : 1 })}
                             >
                                 <Text className="text-white font-semibold text-center">다음</Text>
-                            </TouchableOpacity>
+                            </Pressable>
                         )}
                     </View>
                 </View>

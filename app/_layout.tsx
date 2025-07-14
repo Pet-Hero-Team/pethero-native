@@ -1,6 +1,7 @@
 // RootLayout.tsx
 import { toastConfig } from '@/utils/toast';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router/stack';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -10,6 +11,7 @@ import Toast from 'react-native-toast-message';
 import '../global.css';
 
 
+const queryClient = new QueryClient();
 export default function RootLayout() {
   const kakaoNativeAppKey = process.env.EXPO_PUBLIC_NATIVE_APP_KEY || 'c174f8b739a3950a1340c1e45f041b26';
 
@@ -18,7 +20,8 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <>
+
+    <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <Stack screenOptions={{ headerShown: false }}>
@@ -33,6 +36,6 @@ export default function RootLayout() {
         </SafeAreaProvider>
       </GestureHandlerRootView>
       <Toast config={toastConfig} />
-    </>
+    </QueryClientProvider>
   );
 }
