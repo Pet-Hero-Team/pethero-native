@@ -1,5 +1,5 @@
-
 import DotPaginator from '@/components/DotPaginator';
+import { PET_OPTIONS } from '@/constants/pet';
 import { supabase } from '@/supabase/supabase';
 import { signOut } from '@/utils/auth';
 import { Entypo } from '@expo/vector-icons';
@@ -9,6 +9,8 @@ import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { Link, router } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -22,6 +24,7 @@ const fetchReports = async () => {
       description,
       address,
       animal_type,
+      created_at,
       reports_images (url)
     `)
     .order('created_at', { ascending: false })
@@ -33,9 +36,63 @@ const fetchReports = async () => {
     title: report.title,
     description: report.description || '설명 없음',
     location: report.address || '위치 정보 없음',
-    type: report.animal_type || '미지정',
+    animal_type: report.animal_type || '미지정',
+    created_at: report.created_at,
     image: report.reports_images?.[0]?.url || null,
   }));
+};
+
+const getAnimalTypeLabel = (value) => {
+  const option = PET_OPTIONS.find(option => option.value === value);
+  return option ? option.label : '미지정';
+};
+
+const formatTimeAgo = (date) => {
+  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko });
+};
+
+const ReportItem = ({ item }) => {
+  return (
+    <Link href={`/map/rescues/${item.id}`}>
+      <View className="flex-row items-center w-full py-5">
+        <View>
+          {item.image ? (
+            <Image
+              source={{ uri: item.image }}
+              className="w-28 h-28 rounded-2xl"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="w-28 h-28 bg-neutral-100 rounded-2xl flex-row items-center justify-center">
+              <MaterialIcons name="pets" size={24} color="#d4d4d4" />
+            </View>
+          )}
+        </View>
+        <View className="ml-5 flex-1">
+          <View className="flex-row items-center">
+            <Text className="text-lg text-neutral-700 font-semibold" numberOfLines={1} ellipsizeMode="tail">
+              {item.title}
+            </Text>
+          </View>
+          <View className="flex-row items-center mt-1">
+            <Text className="text-neutral-500 text-sm" numberOfLines={1} ellipsizeMode="tail">
+              {item.description}
+            </Text>
+          </View>
+          <View className="flex-row mt-4">
+            <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+              <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
+              <Text className="text-xs text-neutral-600 ml-1">{item.location}</Text>
+            </View>
+            <View className="ml-2 flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+              <Text className="text-xs text-neutral-600 ml-1">{getAnimalTypeLabel(item.animal_type)}</Text>
+            </View>
+          </View>
+          <Text className="text-xs text-neutral-400 mt-2">{formatTimeAgo(item.created_at)}</Text>
+        </View>
+      </View>
+    </Link>
+  );
 };
 
 export default function HomeScreen() {
@@ -79,44 +136,7 @@ export default function HomeScreen() {
     }
   };
 
-  const renderReportItem = ({ item }) => (
-    <Link href={`/map/rescues/${item.id}`}>
-      <View className="flex-row items-center w-full py-5">
-        <View>
-          {item.image ? (
-            <Image
-              source={{ uri: item.image }}
-              className="w-28 h-28 rounded-2xl"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="w-28 h-28 bg-white rounded-2xl" />
-          )}
-        </View>
-        <View className="ml-5 flex-1">
-          <View className="flex-row items-center">
-            <Text className="text-lg text-neutral-700 font-semibold" numberOfLines={1} ellipsizeMode="tail">
-              {item.title}
-            </Text>
-          </View>
-          <View className="flex-row items-center mt-1">
-            <Text className="text-neutral-500 text-sm" numberOfLines={1} ellipsizeMode="tail">
-              {item.description}
-            </Text>
-          </View>
-          <View className="flex-row mt-4">
-            <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-              <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-              <Text className="text-xs text-neutral-600 ml-1">{item.location}</Text>
-            </View>
-            <View className="ml-2 flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-              <Text className="text-xs text-neutral-600 ml-1">{item.type}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-    </Link>
-  );
+  const renderReportItem = ({ item }) => <ReportItem item={item} />;
 
   return (
     <SafeAreaView className="flex-1 bg-neutral-100">

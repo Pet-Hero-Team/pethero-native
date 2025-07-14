@@ -1,52 +1,177 @@
 import { ShadowView } from '@/components/ShadowView';
+import { supabase } from '@/supabase/supabase';
 import { Fontisto, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import * as Location from 'expo-location';
 import { Link, router } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
+const PAGE_SIZE = 10;
 
-const ReportItem = () => (
-    <View className='flex-row justify-between px-6 mt-8'>
-        <View className='flex-1'>
-            <Text className='text-lg font-bold text-neutral-800'>주황색 보더콜리를 봤었습니다.</Text>
-            <Text className='leading-6 text-neutral-500 mt-1' numberOfLines={2}>
-                서울숲 공원에서 목격했구요, 목줄이 착용되어있었습니다. 이름은 적혀있지않았고 사람손을 많이 탄걸로보여요 짖지도 않고 사람을 좋아하는거같아요
-            </Text>
-            <View className='flex-row items-center mt-4 justify-between pr-1'>
-                <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-                    <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-                    <Text className="text-xs text-neutral-600 ml-1">부천상동</Text>
+interface UserLocation {
+    latitude: number;
+    longitude: number;
+}
+
+interface Report {
+    id: string;
+    title: string;
+    description: string;
+    address: string;
+    created_at: string;
+    distance: number | null;
+    image: string | null;
+}
+
+const fetchReports = async ({ pageParam = 0, sortBy = 'created_at', userLocation = null }: {
+    pageParam: number;
+    sortBy: string;
+    userLocation: UserLocation | null;
+}): Promise<Report[]> => {
+    await supabase.from('reports').select('id').limit(1);
+
+    const params = userLocation ? {
+        user_latitude: userLocation.latitude,
+        user_longitude: userLocation.longitude,
+    } : {};
+
+    console.log('RPC params:', JSON.stringify(params));
+
+    let query = userLocation
+        ? supabase.rpc('get_reports_with_distance', params)
+        : supabase.from('reports').select(`
+        id,
+        title,
+        description,
+        address,
+        created_at,
+        latitude,
+        longitude,
+        reports_images (url)
+      `);
+
+    query = query.order(sortBy === 'distance' && userLocation ? 'distance' : 'created_at', { ascending: sortBy === 'distance' })
+        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+
+    const { data, error } = await query;
+    if (error) {
+        console.error('Query error:', JSON.stringify(error));
+        throw new Error(`제보 조회 실패: ${error.message}`);
+    }
+
+    console.log('Raw data:', JSON.stringify(data));
+
+    return data.map(report => ({
+        id: report.id,
+        title: report.title,
+        description: report.description || '설명 없음',
+        address: report.address || '위치 정보 없음',
+        created_at: report.created_at,
+        distance: userLocation && report.distance != null ? Math.round(report.distance * 1000) : null,
+        image: report.image || (report.reports_images?.[0]?.url) || null,
+    }));
+};
+
+const formatTimeAgo = (date: string): string => {
+    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko });
+};
+
+const formatDistance = (distance: number | null): string => {
+    if (distance == null) return '';
+    if (distance < 1000) return `${distance}m`;
+    return `${(distance / 1000).toFixed(1)}km`;
+};
+
+interface ReportItemProps {
+    item: Report;
+}
+
+const ReportItem: React.FC<ReportItemProps> = ({ item }) => {
+    return (
+        <View className="flex-row justify-between px-6 mt-8">
+            <View className="flex-1">
+                <Text className="text-lg font-bold text-neutral-800">{item.title}</Text>
+                <Text className="leading-6 text-neutral-500 mt-1" numberOfLines={2}>
+                    {item.description}
+                </Text>
+                <View className='flex-row items-center mt-2'>
+                    <Text className="text-xs text-neutral-400">{formatTimeAgo(item.created_at)}</Text>
+                    {item.distance != null && (
+                        <Text className="text-xs text-neutral-400 ml-1">· {formatDistance(item.distance)}</Text>
+                    )}
                 </View>
+                <View className="flex-row items-center mt-4 space-x-2">
+                    <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+                        <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
+                        <Text className="text-xs text-neutral-600 ml-1">{item.address}</Text>
+                    </View>
+                </View>
+
             </View>
+            <Image
+                source={{ uri: item.image || 'https://picsum.photos/seed/puppy4/400/400' }}
+                className="size-28 rounded-2xl ml-4"
+                resizeMode="contain"
+            />
         </View>
-        <Image
-            source={{ uri: "https://picsum.photos/seed/puppy4/400/400" }}
-            className='size-28 rounded-2xl ml-4'
-            resizeMode='contain'
-        />
-    </View>
-);
+    );
+};
 
 const tabs = [
-    { id: 'group', label: '최신순' },
-    { id: 'personal', label: '인기순' },
+    { id: 'latest', label: '최신순' },
+    { id: 'distance', label: '거리순' },
 ];
 
 export default function ReportsScreen() {
-    const [activeTab, setActiveTab] = useState<string | null>(null);
-    const [scrolled, setScrolled] = useState(false);
-    const topSectionRef = useRef(null);
-    const [topSectionHeight, setTopSectionHeight] = useState(0);
+    const [activeTab, setActiveTab] = useState<string>('latest');
+    const [scrolled, setScrolled] = useState<boolean>(false);
+    const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+    const topSectionRef = useRef<View>(null);
+    const [topSectionHeight, setTopSectionHeight] = useState<number>(0);
 
-    const handleScroll = (event) => {
+    useEffect(() => {
+        const getLocation = async () => {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('위치 권한 필요', '위치 권한을 허용해야 근처 제보를 확인할 수 있습니다.');
+                return;
+            }
+
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Low,
+            });
+            setUserLocation({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+            });
+        };
+        getLocation();
+    }, []);
+
+    const { data, fetchNextPage, hasNextPage, isLoading, error } = useInfiniteQuery<Report[], Error>({
+        queryKey: ['reports', activeTab, userLocation],
+        queryFn: ({ pageParam }) => fetchReports({ pageParam, sortBy: activeTab, userLocation }),
+        getNextPageParam: (lastPage) => (lastPage.length === PAGE_SIZE ? lastPage.length : undefined),
+        initialPageParam: 0,
+    });
+
+    const handleScroll = (event: any) => {
         const offsetY = event.nativeEvent.contentOffset.y;
         setScrolled(offsetY > topSectionHeight);
+        if (offsetY + event.nativeEvent.layoutMeasurement.height >= event.nativeEvent.contentSize.height - 50 && hasNextPage) {
+            fetchNextPage();
+        }
     };
 
-    const handleLayout = (event) => {
+    const handleLayout = (event: any) => {
         const { height } = event.nativeEvent.layout;
         setTopSectionHeight(height);
     };
+
+    const reports = data?.pages.flat() || [];
 
     return (
         <SafeAreaView className="flex-1 bg-slate-100">
@@ -68,7 +193,7 @@ export default function ReportsScreen() {
                 scrollEventThrottle={16}
             >
                 <View
-                    className='bg-slate-100 pt-8 pb-14 px-9 flex-row items-center'
+                    className="bg-slate-100 pt-8 pb-14 px-9 flex-row items-center"
                     onLayout={handleLayout}
                     ref={topSectionRef}
                 >
@@ -77,13 +202,13 @@ export default function ReportsScreen() {
                         className="size-16"
                         resizeMode="contain"
                     />
-                    <View className='ml-6 flex-1'>
-                        <Text className='text-lg text-orange-500 font-bold'>실제 유저가 올린</Text>
-                        <Text className='text-2xl font-bold'>실시간 목격현황을 확인하세요</Text>
+                    <View className="ml-6 flex-1">
+                        <Text className="text-lg text-orange-500 font-bold">실제 유저가 올린</Text>
+                        <Text className="text-2xl font-bold">실시간 목격현황을 확인하세요</Text>
                     </View>
                 </View>
 
-                <ShadowView className='bg-white flex-1 rounded-3xl pb-12'>
+                <ShadowView className="bg-white flex-1 rounded-3xl pb-12">
                     <View className="flex-row justify-between mt-3">
                         {tabs.map((tab) => (
                             <TouchableOpacity
@@ -100,11 +225,15 @@ export default function ReportsScreen() {
                             </TouchableOpacity>
                         ))}
                     </View>
-                    <ReportItem />
-                    <ReportItem />
-                    <ReportItem />
-                    <ReportItem />
-                    <ReportItem />
+                    {isLoading ? (
+                        <Text className="text-neutral-600 text-center mt-8">로딩 중...</Text>
+                    ) : error ? (
+                        <Text className="text-red-500 text-center mt-8">오류: {error.message}</Text>
+                    ) : reports.length === 0 ? (
+                        <Text className="text-neutral-600 text-center mt-8">근처 제보가 없습니다.</Text>
+                    ) : (
+                        reports.map((item) => <ReportItem key={item.id} item={item} />)
+                    )}
                 </ShadowView>
             </ScrollView>
         </SafeAreaView>
