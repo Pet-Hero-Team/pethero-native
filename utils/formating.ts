@@ -12,3 +12,9 @@ export const handleNumericInput = (text: string, maxValue: number): number | und
   const parsedValue = parseInt(numericValue, 10);
   return parsedValue > maxValue ? maxValue : parsedValue;
 };
+
+export const formatDistance = (distance: number | null): string => {
+  if (distance == null) return "거리 정보 없음";
+  if (distance < 1000) return `${distance}m`;
+  return `${(distance / 1000).toFixed(1)}km`;
+};

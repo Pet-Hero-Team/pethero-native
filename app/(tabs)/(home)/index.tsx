@@ -23,7 +23,6 @@ const fetchReports = async () => {
       title,
       description,
       address,
-      animal_type,
       created_at,
       reports_images (url)
     `)
@@ -36,7 +35,6 @@ const fetchReports = async () => {
     title: report.title,
     description: report.description || '설명 없음',
     location: report.address || '위치 정보 없음',
-    animal_type: report.animal_type || '미지정',
     created_at: report.created_at,
     image: report.reports_images?.[0]?.url || null,
   }));
@@ -53,7 +51,7 @@ const formatTimeAgo = (date) => {
 
 const ReportItem = ({ item }) => {
   return (
-    <Link href={`/map/rescues/${item.id}`}>
+    <Link href={`/map/reports/${item.id}`}>
       <View className="flex-row items-center w-full py-5">
         <View>
           {item.image ? (
@@ -82,10 +80,7 @@ const ReportItem = ({ item }) => {
           <View className="flex-row mt-4">
             <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
               <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-              <Text className="text-xs text-neutral-600 ml-1">{item.location}</Text>
-            </View>
-            <View className="ml-2 flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-              <Text className="text-xs text-neutral-600 ml-1">{getAnimalTypeLabel(item.animal_type)}</Text>
+              <Text className="text-xs text-neutral-600 ml-1 max-w-40" numberOfLines={1}>{item.location}</Text>
             </View>
           </View>
           <Text className="text-xs text-neutral-400 mt-2">{formatTimeAgo(item.created_at)}</Text>
@@ -227,7 +222,7 @@ export default function HomeScreen() {
         <View className="w-full bg-slate-500 h-32 mt-8"></View>
         <View className="px-6 bg-white pt-16 pb-6">
           <View className="flex-row items-center justify-between pb-5">
-            <Text className="text-neutral-800 text-2xl font-bold">방금 올라온 목격담</Text>
+            <Text className="text-neutral-800 text-2xl font-bold">방금 올라온 목격담 </Text>
             <View className="flex-row items-center">
               <MaterialIcons name="refresh" size={16} color="#a3a3a3" />
               <Text className="text-neutral-400 font-semibold ml-2">방금 전</Text>

@@ -1,5 +1,7 @@
 import { ShadowView } from '@/components/ShadowView';
 import { supabase } from '@/supabase/supabase';
+import { calculateDistance, UserLocation } from '@/utils/calculateDistance';
+import { formatDistance } from '@/utils/formating';
 import { Fontisto, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
@@ -10,11 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const PAGE_SIZE = 10;
-
-interface UserLocation {
-    latitude: number;
-    longitude: number;
-}
+const MAX_DISTANCE_KM = 5;
 
 interface Report {
     id: string;
@@ -31,27 +29,28 @@ const fetchReports = async ({ pageParam = 0, sortBy = 'created_at', userLocation
     sortBy: string;
     userLocation: UserLocation | null;
 }): Promise<Report[]> => {
-    await supabase.from('reports').select('id').limit(1);
-
     const params = userLocation ? {
         user_latitude: userLocation.latitude,
         user_longitude: userLocation.longitude,
     } : {};
 
-    console.log('RPC params:', JSON.stringify(params));
 
-    let query = userLocation
-        ? supabase.rpc('get_reports_with_distance', params)
-        : supabase.from('reports').select(`
-        id,
-        title,
-        description,
-        address,
-        created_at,
-        latitude,
-        longitude,
-        reports_images (url)
-      `);
+
+    let query;
+    if (userLocation && sortBy === 'distance') {
+        query = supabase.rpc('get_reports_with_distance', params);
+    } else {
+        query = supabase.from('reports').select(`
+            id,
+            title,
+            description,
+            address,
+            created_at,
+            latitude,
+            longitude,
+            reports_images:reports_images!left(url)
+        `);
+    }
 
     query = query.order(sortBy === 'distance' && userLocation ? 'distance' : 'created_at', { ascending: sortBy === 'distance' })
         .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
@@ -59,30 +58,69 @@ const fetchReports = async ({ pageParam = 0, sortBy = 'created_at', userLocation
     const { data, error } = await query;
     if (error) {
         console.error('Query error:', JSON.stringify(error));
-        throw new Error(`제보 조회 실패: ${error.message}`);
+        console.warn('Falling back to direct query due to RPC failure');
+        query = supabase.from('reports').select(`
+            id,
+            title,
+            description,
+            address,
+            created_at,
+            latitude,
+            longitude,
+            reports_images:reports_images!left(url)
+        `).order('created_at', { ascending: false })
+            .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+        const { data: fallbackData, error: fallbackError } = await query;
+        if (fallbackError) {
+            console.error('Fallback query error:', JSON.stringify(fallbackError));
+            throw new Error(`제보 조회 실패: ${fallbackError.message}`);
+        }
+        return processReports(fallbackData, userLocation, sortBy);
     }
 
-    console.log('Raw data:', JSON.stringify(data));
 
-    return data.map(report => ({
-        id: report.id,
-        title: report.title,
-        description: report.description || '설명 없음',
-        address: report.address || '위치 정보 없음',
-        created_at: report.created_at,
-        distance: userLocation && report.distance != null ? Math.round(report.distance * 1000) : null,
-        image: report.image || (report.reports_images?.[0]?.url) || null,
-    }));
+    return processReports(data, userLocation, sortBy);
+};
+
+const processReports = (data: any[], userLocation: UserLocation | null, sortBy: string): Report[] => {
+    const uniqueReports = new Map<string, Report>();
+    data.forEach(report => {
+        if (!uniqueReports.has(report.id)) {
+            const image = userLocation && report.image_url
+                ? report.image_url
+                : report.reports_images?.[0]?.url || null;
+            const distance = userLocation && report.latitude && report.longitude
+                ? calculateDistance(userLocation.latitude, userLocation.longitude, report.latitude, report.longitude)
+                : userLocation && report.distance != null
+                    ? report.distance
+                    : null;
+            if (!userLocation || distance == null || distance <= MAX_DISTANCE_KM) {
+
+                uniqueReports.set(report.id, {
+                    id: report.id,
+                    title: report.title,
+                    description: report.description || '설명 없음',
+                    address: report.address || '위치 정보 없음',
+                    created_at: report.created_at,
+                    distance: distance != null ? Math.round(distance * 1000) : null,
+                    image,
+                });
+            }
+        }
+    });
+
+    let reports = Array.from(uniqueReports.values());
+    if (sortBy === 'distance' && userLocation) {
+        reports = reports.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+    } else {
+        reports = reports.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+
+    return reports;
 };
 
 const formatTimeAgo = (date: string): string => {
     return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko });
-};
-
-const formatDistance = (distance: number | null): string => {
-    if (distance == null) return '';
-    if (distance < 1000) return `${distance}m`;
-    return `${(distance / 1000).toFixed(1)}km`;
 };
 
 interface ReportItemProps {
@@ -90,33 +128,33 @@ interface ReportItemProps {
 }
 
 const ReportItem: React.FC<ReportItemProps> = ({ item }) => {
+
     return (
-        <View className="flex-row justify-between px-6 mt-8">
-            <View className="flex-1">
-                <Text className="text-lg font-bold text-neutral-800">{item.title}</Text>
-                <Text className="leading-6 text-neutral-500 mt-1" numberOfLines={2}>
-                    {item.description}
-                </Text>
-                <View className='flex-row items-center mt-2'>
-                    <Text className="text-xs text-neutral-400">{formatTimeAgo(item.created_at)}</Text>
-                    {item.distance != null && (
+        <Pressable onPress={() => router.push(`/map/reports/${item.id}`)}>
+            <View className="flex-row justify-between px-6 mt-8">
+                <View className="flex-1">
+                    <Text className="text-lg font-bold text-neutral-800">{item.title}</Text>
+                    <Text className="leading-6 text-neutral-500 mt-1 text-sm" numberOfLines={2}>
+                        {item.description}
+                    </Text>
+                    <View className='flex-row items-center mt-2'>
+                        <Text className="text-xs text-neutral-400">{formatTimeAgo(item.created_at)}</Text>
                         <Text className="text-xs text-neutral-400 ml-1">· {formatDistance(item.distance)}</Text>
-                    )}
-                </View>
-                <View className="flex-row items-center mt-4 space-x-2">
-                    <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
-                        <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-                        <Text className="text-xs text-neutral-600 ml-1">{item.address}</Text>
+                    </View>
+                    <View className="flex-row items-center mt-4 space-x-2">
+                        <View className="flex-row items-center bg-neutral-100 px-2 py-1 rounded-md">
+                            <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
+                            <Text className="text-xs text-neutral-600 ml-1">{item.address}</Text>
+                        </View>
                     </View>
                 </View>
-
+                <Image
+                    source={{ uri: item.image || 'https://picsum.photos/seed/puppy4/400/400' }}
+                    className="size-28 rounded-2xl ml-4"
+                    resizeMode="cover"
+                />
             </View>
-            <Image
-                source={{ uri: item.image || 'https://picsum.photos/seed/puppy4/400/400' }}
-                className="size-28 rounded-2xl ml-4"
-                resizeMode="contain"
-            />
-        </View>
+        </Pressable>
     );
 };
 
@@ -151,7 +189,7 @@ export default function ReportsScreen() {
         getLocation();
     }, []);
 
-    const { data, fetchNextPage, hasNextPage, isLoading, error } = useInfiniteQuery<Report[], Error>({
+    const { data, fetchNextPage, hasNextPage, isLoading, error, refetch } = useInfiniteQuery<Report[], Error>({
         queryKey: ['reports', activeTab, userLocation],
         queryFn: ({ pageParam }) => fetchReports({ pageParam, sortBy: activeTab, userLocation }),
         getNextPageParam: (lastPage) => (lastPage.length === PAGE_SIZE ? lastPage.length : undefined),
@@ -228,7 +266,15 @@ export default function ReportsScreen() {
                     {isLoading ? (
                         <Text className="text-neutral-600 text-center mt-8">로딩 중...</Text>
                     ) : error ? (
-                        <Text className="text-red-500 text-center mt-8">오류: {error.message}</Text>
+                        <View className="mt-8 px-6">
+                            <Text className="text-red-500 text-center">오류: {error.message}</Text>
+                            <TouchableOpacity
+                                onPress={() => refetch()}
+                                className="mt-4 bg-orange-500 py-2 px-4 rounded-lg"
+                            >
+                                <Text className="text-white text-center">재시도</Text>
+                            </TouchableOpacity>
+                        </View>
                     ) : reports.length === 0 ? (
                         <Text className="text-neutral-600 text-center mt-8">근처 제보가 없습니다.</Text>
                     ) : (
