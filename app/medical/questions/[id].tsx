@@ -1,11 +1,9 @@
 import { ShadowViewLight } from '@/components/ShadowViewLight';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
-import { getAnimalTypeLabel, getTreatmentLabel } from '@/utils/formating';
+import { formatTimeAgo, getAnimalTypeLabel, getTreatmentLabel } from '@/utils/formating';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
@@ -31,10 +29,6 @@ interface RelatedQuestion {
     image: string | null;
     disease_tag: string;
 }
-
-const formatTimeAgo = (date: string) => {
-    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko });
-};
 
 const fetchRelatedQuestions = async (diseaseTag: string, currentQuestionId: string) => {
     const { data, error } = await supabase
@@ -195,7 +189,7 @@ export default function QuestionsDetailScreen() {
                             <View className="flex-1">
                                 <Text className="text-lg font-semibold text-neutral-900">질문자</Text>
                                 <Text className="text-sm text-neutral-500">
-                                    {new Date(question.created_at).toLocaleDateString('ko-KR')}
+                                    {formatTimeAgo(question.created_at)}
                                 </Text>
                             </View>
                             <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
@@ -251,7 +245,7 @@ export default function QuestionsDetailScreen() {
                                         <Text className="font-bold text-teal-800 mr-1">김성진 수의사</Text>
                                         <Ionicons name="checkmark-circle" size={12} color="#0d9488" />
                                     </View>
-                                    <Text className="text-xs text-neutral-500 mt-1">4분전</Text>
+                                    <Text className="text-xs text-neutral-500 mt-1">{formatTimeAgo(new Date().toISOString())}</Text>
                                 </View>
                             </View>
                             <View className="px-6 pb-8">
@@ -272,7 +266,7 @@ export default function QuestionsDetailScreen() {
                                         <Text className="font-bold text-teal-800 mr-1">진수연 수의사</Text>
                                         <Ionicons name="checkmark-circle" size={12} color="#0d9488" />
                                     </View>
-                                    <Text className="text-xs text-neutral-500 mt-1">8분전</Text>
+                                    <Text className="text-xs text-neutral-500 mt-1">{formatTimeAgo(new Date(new Date().getTime() - 4 * 60 * 1000).toISOString())}</Text>
                                 </View>
                             </View>
                             <View className="px-6 pb-8">
@@ -303,7 +297,7 @@ export default function QuestionsDetailScreen() {
                                     </View>
                                     <View className="flex-row items-center px-6 pt-4 justify-between">
                                         <View className="bg-neutral-100 py-2 px-3 rounded-lg">
-                                            <Text className="text-sm font-semibold text-neutral-600">{getTreatmentLabel(question.disease_tag.tag_name)}</Text>
+                                            <Text className="text-sm font-semibold text-neutral-600">{item.disease_tag}</Text>
                                         </View>
                                         <Text className="text-sm text-neutral-600">{formatTimeAgo(item.created_at)}</Text>
                                     </View>

@@ -1,4 +1,6 @@
 import { PET_OPTIONS } from '@/constants/pet';
+import { supabase } from '@/supabase/supabase';
+import { getTreatmentLabel } from '@/utils/formating';
 import { FontAwesome6, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
@@ -240,7 +242,7 @@ const SubmitButton = ({ disabled, onPress }) => (
 export default function VetQuestionScreen() {
     const [currentStep, setCurrentStep] = useState(0);
     const [isSubmitted, setIsSubmitted] = useState(false);
-    const [submittedData, setSubmittedData] = useState(null);
+    const [submittedQuestionId, setSubmittedQuestionId] = useState<string | null>(null);
     const { control, handleSubmit, setValue, getValues, formState: { errors }, trigger, reset } = useForm({
         defaultValues: {
             petType: '',
@@ -260,10 +262,75 @@ export default function VetQuestionScreen() {
         { name: 'images', label: '이미지 업로드' },
     ];
 
-    const onSubmit = (data) => {
-        setSubmittedData(data);
-        setIsSubmitted(true);
-        reset();
+    const onSubmit = async (data) => {
+        try {
+
+            const { data: diseaseTag, error: tagError } = await supabase
+                .from('disease_tags')
+                .select('id')
+                .eq('tag_name', data.treatment)
+                .single();
+
+            if (tagError || !diseaseTag) {
+                alert('질병 태그를 찾을 수 없습니다.');
+                return;
+            }
+
+
+            const { data: questionData, error: questionError } = await supabase
+                .from('pet_questions')
+                .insert({
+                    user_id: (await supabase.auth.getUser()).data.user?.id,
+                    title: data.title,
+                    description: data.details,
+                    animal_type: data.petType,
+                    created_at: new Date().toISOString(),
+                })
+                .select('id')
+                .single();
+
+            if (questionError || !questionData) {
+                alert('질문 저장 중 오류가 발생했습니다.');
+                return;
+            }
+
+
+            const { error: tagLinkError } = await supabase
+                .from('pet_question_disease_tags')
+                .insert({
+                    pet_question_id: questionData.id,
+                    disease_tag_id: diseaseTag.id,
+                });
+
+            if (tagLinkError) {
+                alert('질병 태그 연결 중 오류가 발생했습니다.');
+                return;
+            }
+
+
+            if (data.images.length > 0) {
+                const imageInserts = data.images.map((uri) => ({
+                    pet_question_id: questionData.id,
+                    url: uri,
+                }));
+                const { error: imageError } = await supabase
+                    .from('pet_question_images')
+                    .insert(imageInserts);
+
+                if (imageError) {
+                    alert('이미지 저장 중 오류가 발생했습니다.');
+                    return;
+                }
+            }
+
+
+            setSubmittedQuestionId(questionData.id);
+            setIsSubmitted(true);
+            reset();
+        } catch (error) {
+            console.error('제출 오류:', error);
+            alert('질문 제출 중 오류가 발생했습니다.');
+        }
     };
 
     const isNextDisabled = () => {
@@ -355,22 +422,25 @@ export default function VetQuestionScreen() {
                     <Text className="font-bold text-xl mb-8 text-gray-800">신청 요약정보</Text>
                     <View className="flex-row mb-6 justify-between">
                         <Text className="text-neutral-500">애완동물</Text>
-                        <Text className="font-bold text-lg">{submittedData?.petType || '미지정'}</Text>
+                        <Text className="font-bold text-lg">{getValues('petType') || '미지정'}</Text>
                     </View>
                     <View className="flex-row mb-6 justify-between">
                         <Text className="text-neutral-500">진료항목</Text>
-                        <Text className="font-bold text-lg">{submittedData?.treatment || '미지정'}</Text>
+                        <Text className="font-bold text-lg">{getTreatmentLabel(getValues('treatment')) || '미지정'}</Text>
                     </View>
                     <View className="flex-row justify-between">
                         <Text className="text-neutral-500">제목</Text>
-                        <Text className="font-bold text-lg" numberOfLines={1}>{submittedData?.title || '미지정'}</Text>
+                        <Text className="font-bold text-lg" numberOfLines={1}>{getValues('title') || '미지정'}</Text>
                     </View>
                 </View>
                 <View>
                     <Text className="text-neutral-500 text-sm text-center mb-4">
                         ※ 질문에 따라 시간이 소요될 수 있습니다.
                     </Text>
-                    <TouchableOpacity className="bg-teal-500 py-4 rounded-xl items-center">
+                    <TouchableOpacity
+                        className="bg-teal-500 py-4 rounded-xl items-center"
+                        onPress={() => submittedQuestionId && router.push(`/medical/questions/${submittedQuestionId}`)}
+                    >
                         <Text className="text-white font-bold text-lg">질문내역 보기</Text>
                     </TouchableOpacity>
                 </View>
@@ -450,4 +520,4 @@ export default function VetQuestionScreen() {
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
-};
+}

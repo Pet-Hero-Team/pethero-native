@@ -1,4 +1,6 @@
 import { PET_OPTIONS, TREATMENT_OPTIONS } from "@/constants/pet";
+import { formatDistanceToNow } from "date-fns";
+import { ko } from "date-fns/locale";
 
 export const numberFormatter = new Intl.NumberFormat("en-US");
 
@@ -21,6 +23,10 @@ export const formatDistance = (distance: number | null): string => {
   return `${(distance / 1000).toFixed(1)}km`;
 };
 
+const formatTimeAgo = (date: string) => {
+  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko });
+};
+
 const getAnimalTypeLabel = (value: string) => {
   const option = PET_OPTIONS.find((option) => option.value === value);
   return option ? option.label : value;
@@ -31,4 +37,4 @@ const getTreatmentLabel = (value: string) => {
   return option ? option.label : value;
 };
 
-export { getAnimalTypeLabel, getTreatmentLabel, PET_OPTIONS, TREATMENT_OPTIONS };
+export { formatTimeAgo, getAnimalTypeLabel, getTreatmentLabel, PET_OPTIONS, TREATMENT_OPTIONS };

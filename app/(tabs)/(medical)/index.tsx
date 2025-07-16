@@ -1,10 +1,8 @@
 import { ShadowView } from '@/components/ShadowView';
 import { supabase } from '@/supabase/supabase';
-import { getAnimalTypeLabel, getTreatmentLabel } from '@/utils/formating';
+import { formatTimeAgo, getAnimalTypeLabel, getTreatmentLabel } from '@/utils/formating';
 import { AntDesign, FontAwesome6, Fontisto, Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { Link } from 'expo-router';
 import { Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
@@ -13,21 +11,21 @@ const newsList = [
         id: 1,
         type: '고양이',
         title: '고양이는 왜 꾹꾹이를 할까?',
-        period: '3일 전',
+        created_at: new Date(new Date().getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
         image: 'https://picsum.photos/200/300',
     },
     {
         id: 2,
         type: '강아지',
         title: '강아지 석고현상을 아시나요?',
-        period: '5일 전',
+        created_at: new Date(new Date().getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
         image: 'https://picsum.photos/200/300',
     },
     {
         id: 3,
         type: '소형동물',
         title: '토끼 키우기에 관한 꿀팁 10가지',
-        period: '8일 전',
+        created_at: new Date(new Date().getTime() - 8 * 24 * 60 * 60 * 1000).toISOString(),
         image: 'https://picsum.photos/200/300',
     },
 ];
@@ -62,10 +60,6 @@ const fetchQuestions = async () => {
     }));
 };
 
-const formatTimeAgo = (date) => {
-    return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko });
-};
-
 export default function MedicalScreen() {
     const { width } = useWindowDimensions();
     const CARD_WIDTH = width * 0.55;
@@ -92,7 +86,7 @@ export default function MedicalScreen() {
                             <Fontisto name="search" size={18} color="#737373" />
                         </ShadowView>
                     </View>
-                    <View className="px-6 pt-16">
+                    <View className="px-6 pt-16 pb-2">
                         <View className="flex-row items-center">
                             <ShadowView className="rounded-3xl bg-white flex-1 justify-between py-6 px-5 w-1/2">
                                 <Link href="/medical/questions/question" asChild>
@@ -123,43 +117,43 @@ export default function MedicalScreen() {
                             </ShadowView>
                         </View>
                     </View>
+                </View>
 
-                    <View className="mt-2">
-                        {isLoading ? (
-                            <Text className="text-neutral-600 text-center">로딩 중...</Text>
-                        ) : error ? (
-                            <Text className="text-red-500 text-center">오류: {(error as Error).message}</Text>
-                        ) : questions.length === 0 ? (
-                            <Text className="text-neutral-600 text-center">질문이 없습니다.</Text>
-                        ) : (
-                            questions.map((item) => (
-                                <Link href={`/medical/questions/${item.id}`} key={item.id}>
-                                    <View className="border-b border-b-neutral-100 py-8 w-full">
-                                        <View className="px-6">
-                                            <Text className="text-neutral-700 font-bold text-lg pb-1">{item.title}</Text>
-                                            <Text className="text-neutral-600 text-base leading-7" numberOfLines={2}>
-                                                {item.description}
-                                            </Text>
-                                        </View>
-                                        <View className="flex-row items-center px-6 pt-4 justify-between">
-                                            <View className="bg-neutral-100 py-2 px-3 rounded-lg">
-                                                <Text className="text-sm font-semibold text-neutral-600">{item.disease_tag}</Text>
-                                            </View>
-                                            <Text className="text-sm text-neutral-600">{formatTimeAgo(item.created_at)}</Text>
-                                        </View>
+                <View className="bg-white">
+                    {isLoading ? (
+                        <Text className="text-neutral-600 text-center">로딩 중...</Text>
+                    ) : error ? (
+                        <Text className="text-red-500 text-center">오류: {(error as Error).message}</Text>
+                    ) : questions.length === 0 ? (
+                        <Text className="text-neutral-600 text-center">질문이 없습니다.</Text>
+                    ) : (
+                        questions.map((item) => (
+                            <Link href={`/medical/questions/${item.id}`} key={item.id}>
+                                <View className="border-b border-b-neutral-100 py-8 w-full">
+                                    <View className="px-6">
+                                        <Text className="text-neutral-700 font-bold text-lg pb-1">{item.title}</Text>
+                                        <Text className="text-neutral-600 text-base leading-7" numberOfLines={2}>
+                                            {item.description}
+                                        </Text>
                                     </View>
-                                </Link>
-                            ))
-                        )}
-                        <Link href="/medical/questions/questions">
-                            <View className="border-b border-b-neutral-100 py-5 w-full">
-                                <View className="flex-row items-center justify-center ml-2">
-                                    <Text className="text-center text-base text-neutral-600 mr-1">더보기</Text>
-                                    <AntDesign name="right" size={12} color="#6c6c6c" />
+                                    <View className="flex-row items-center px-6 pt-4 justify-between">
+                                        <View className="bg-neutral-100 py-2 px-3 rounded-lg">
+                                            <Text className="text-sm font-semibold text-neutral-600">{item.disease_tag}</Text>
+                                        </View>
+                                        <Text className="text-sm text-neutral-600">{formatTimeAgo(item.created_at)}</Text>
+                                    </View>
                                 </View>
+                            </Link>
+                        ))
+                    )}
+                    <Link href="/medical/questions/questions">
+                        <View className="border-b border-b-neutral-100 py-5 w-full">
+                            <View className="flex-row items-center justify-center ml-2">
+                                <Text className="text-center text-base text-neutral-600 mr-1">더보기</Text>
+                                <AntDesign name="right" size={12} color="#6c6c6c" />
                             </View>
-                        </Link>
-                    </View>
+                        </View>
+                    </Link>
                 </View>
                 <View className="bg-white px-6 py-8">
                     <View className="flex-row items-center justify-between mb-6">
@@ -191,7 +185,7 @@ export default function MedicalScreen() {
                                         resizeMode="cover"
                                     />
                                     <Text className="text-neutral-700 font-bold text-lg mb-1 mt-3">{item.title}</Text>
-                                    <Text className="text-neutral-500 text-xs">{item.period}</Text>
+                                    <Text className="text-neutral-500 text-xs">{formatTimeAgo(item.created_at)}</Text>
                                 </View>
                             </Link>
                         ))}
@@ -219,6 +213,6 @@ export default function MedicalScreen() {
                     </View>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
