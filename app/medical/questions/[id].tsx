@@ -32,7 +32,6 @@ interface RelatedQuestion {
 }
 
 const fetchRelatedQuestions = async (diseaseTag: string, currentQuestionId: string) => {
-    await new Promise(resolve => setTimeout(resolve, 5000));
     const { data, error } = await supabase
         .from('pet_questions')
         .select(`
@@ -96,7 +95,6 @@ export default function QuestionsDetailScreen() {
 
             try {
                 setIsLoading(true);
-                await new Promise(resolve => setTimeout(resolve, 5000));
                 const { data, error } = await supabase
                     .from('pet_questions')
                     .select(`

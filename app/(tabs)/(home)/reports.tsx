@@ -1,4 +1,5 @@
 import { ShadowView } from '@/components/ShadowView';
+import { ReportItemSkeleton } from '@/constants/skeletions';
 import { supabase } from '@/supabase/supabase';
 import { calculateDistance, UserLocation } from '@/utils/calculateDistance';
 import { formatDistance } from '@/utils/formating';
@@ -29,12 +30,11 @@ const fetchReports = async ({ pageParam = 0, sortBy = 'created_at', userLocation
     sortBy: string;
     userLocation: UserLocation | null;
 }): Promise<Report[]> => {
+
     const params = userLocation ? {
         user_latitude: userLocation.latitude,
         user_longitude: userLocation.longitude,
     } : {};
-
-
 
     let query;
     if (userLocation && sortBy === 'distance') {
@@ -78,7 +78,6 @@ const fetchReports = async ({ pageParam = 0, sortBy = 'created_at', userLocation
         return processReports(fallbackData, userLocation, sortBy);
     }
 
-
     return processReports(data, userLocation, sortBy);
 };
 
@@ -95,7 +94,6 @@ const processReports = (data: any[], userLocation: UserLocation | null, sortBy: 
                     ? report.distance
                     : null;
             if (!userLocation || distance == null || distance <= MAX_DISTANCE_KM) {
-
                 uniqueReports.set(report.id, {
                     id: report.id,
                     title: report.title,
@@ -128,7 +126,6 @@ interface ReportItemProps {
 }
 
 const ReportItem: React.FC<ReportItemProps> = ({ item }) => {
-
     return (
         <Pressable onPress={() => router.push(`/map/reports/${item.id}`)}>
             <View className="flex-row justify-between px-6 mt-8">
@@ -157,6 +154,7 @@ const ReportItem: React.FC<ReportItemProps> = ({ item }) => {
         </Pressable>
     );
 };
+
 
 const tabs = [
     { id: 'latest', label: '최신순' },
@@ -264,7 +262,11 @@ export default function ReportsScreen() {
                         ))}
                     </View>
                     {isLoading ? (
-                        <Text className="text-neutral-600 text-center mt-8">로딩 중...</Text>
+                        <View>
+                            {Array.from({ length: 3 }).map((_, index) => (
+                                <ReportItemSkeleton key={index} />
+                            ))}
+                        </View>
                     ) : error ? (
                         <View className="mt-8 px-6">
                             <Text className="text-red-500 text-center">오류: {error.message}</Text>

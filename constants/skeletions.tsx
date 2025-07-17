@@ -80,5 +80,31 @@ const QuestionDetailSkeleton = () => {
     );
 };
 
-export { AnswerSkeleton, QuestionDetailSkeleton, RelatedQuestionSkeleton };
+const ReportItemSkeleton = () => {
+    return (
+        <SkeletonPlaceholder
+            backgroundColor="#e5e7eb"
+            highlightColor="#f3f4f6"
+            speed={1000}
+        >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, marginTop: 32 }}>
+                <View style={{ flex: 1 }}>
+                    <View style={{ width: '80%', height: 18, borderRadius: 4, marginBottom: 8 }} />
+                    <View style={{ width: '100%', height: 14, borderRadius: 4, marginBottom: 4 }} />
+                    <View style={{ width: '80%', height: 14, borderRadius: 4, marginBottom: 16 }} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+                        <View style={{ width: 120, height: 12, borderRadius: 4 }} />
+                    </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <View style={{ width: 150, height: 16, borderRadius: 4 }} />
+                    </View>
+                </View>
+                <View style={{ width: 112, height: 112, borderRadius: 16, marginLeft: 16 }} />
+            </View>
+        </SkeletonPlaceholder>
+    );
+};
+
+
+export { AnswerSkeleton, QuestionDetailSkeleton, RelatedQuestionSkeleton, ReportItemSkeleton };
 
