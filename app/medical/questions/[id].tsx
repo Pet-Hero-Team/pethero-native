@@ -1,4 +1,5 @@
 import { ShadowViewLight } from '@/components/ShadowViewLight';
+import { AnswerSkeleton, QuestionDetailSkeleton, RelatedQuestionSkeleton } from '@/constants/skeletions';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import { formatTimeAgo, getAnimalTypeLabel, getTreatmentLabel } from '@/utils/formating';
@@ -6,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
 interface Question {
@@ -31,6 +32,7 @@ interface RelatedQuestion {
 }
 
 const fetchRelatedQuestions = async (diseaseTag: string, currentQuestionId: string) => {
+    await new Promise(resolve => setTimeout(resolve, 5000));
     const { data, error } = await supabase
         .from('pet_questions')
         .select(`
@@ -62,6 +64,10 @@ const fetchRelatedQuestions = async (diseaseTag: string, currentQuestionId: stri
     }));
 };
 
+
+
+
+
 export default function QuestionsDetailScreen() {
     const { user } = useAuth();
     const { id } = useLocalSearchParams();
@@ -90,6 +96,7 @@ export default function QuestionsDetailScreen() {
 
             try {
                 setIsLoading(true);
+                await new Promise(resolve => setTimeout(resolve, 5000));
                 const { data, error } = await supabase
                     .from('pet_questions')
                     .select(`
@@ -148,9 +155,18 @@ export default function QuestionsDetailScreen() {
 
     if (isLoading) {
         return (
-            <SafeAreaView className="flex-1 bg-white justify-center items-center">
-                <ActivityIndicator size="large" color="#14b8a6" />
-                <Text className="mt-4 text-lg font-semibold text-gray-800">로딩 중...</Text>
+            <SafeAreaView className="flex-1 bg-white">
+                <ScrollView className="flex-1 pt-16">
+                    <View className='bg-white'>
+                        <QuestionDetailSkeleton />
+                    </View>
+                    <ShadowViewLight className="bg-white">
+                        <View className="pt-2 bg-white">
+                            <AnswerSkeleton />
+                            <AnswerSkeleton />
+                        </View>
+                    </ShadowViewLight>
+                </ScrollView>
             </SafeAreaView>
         );
     }
@@ -282,7 +298,11 @@ export default function QuestionsDetailScreen() {
                         {getTreatmentLabel(question.disease_tag.tag_name)} 관련 유사 질문
                     </Text>
                     {isRelatedLoading ? (
-                        <Text className="text-neutral-600 text-center">로딩 중...</Text>
+                        <View>
+                            {Array.from({ length: 4 }).map((_, index) => (
+                                <RelatedQuestionSkeleton key={index} />
+                            ))}
+                        </View>
                     ) : relatedQuestions.length === 0 ? (
                         <Text className="text-neutral-600 text-center">유사 질문이 없습니다.</Text>
                     ) : (

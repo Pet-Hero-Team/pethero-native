@@ -5,6 +5,7 @@ import { AntDesign, FontAwesome6, Fontisto, Ionicons } from '@expo/vector-icons'
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'expo-router';
 import { Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 
 const newsList = [
     {
@@ -31,6 +32,7 @@ const newsList = [
 ];
 
 const fetchQuestions = async () => {
+
     const { data, error } = await supabase
         .from('pet_questions')
         .select(`
@@ -58,6 +60,26 @@ const fetchQuestions = async () => {
         image: question.pet_question_images?.[0]?.url || null,
         disease_tag: getTreatmentLabel(question.pet_question_disease_tags?.[0]?.disease_tags?.tag_name || '미지정'),
     }));
+};
+
+const QuestionItemSkeleton = () => {
+    return (
+        <SkeletonPlaceholder
+            backgroundColor="#e5e7eb"
+            highlightColor="#f3f4f6"
+            speed={1000}
+        >
+            <View style={{ width: '100%', paddingVertical: 32, paddingHorizontal: 24, borderBottomWidth: 1, borderColor: '#f3f4f6' }}>
+                <View style={{ width: '100%', height: 20, borderRadius: 4, marginBottom: 8 }} />
+                <View style={{ width: '100%', height: 14, borderRadius: 4, marginBottom: 4 }} />
+                <View style={{ width: '80%', height: 14, borderRadius: 4, marginBottom: 16 }} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <View style={{ width: 100, height: 20, borderRadius: 8 }} />
+                    <View style={{ width: 50, height: 12, borderRadius: 4 }} />
+                </View>
+            </View>
+        </SkeletonPlaceholder>
+    );
 };
 
 export default function MedicalScreen() {
@@ -121,7 +143,11 @@ export default function MedicalScreen() {
 
                 <View className="bg-white">
                     {isLoading ? (
-                        <Text className="text-neutral-600 text-center">로딩 중...</Text>
+                        <View>
+                            {Array.from({ length: 3 }).map((_, index) => (
+                                <QuestionItemSkeleton key={index} />
+                            ))}
+                        </View>
                     ) : error ? (
                         <Text className="text-red-500 text-center">오류: {(error as Error).message}</Text>
                     ) : questions.length === 0 ? (
@@ -213,6 +239,6 @@ export default function MedicalScreen() {
                     </View>
                 </View>
             </ScrollView>
-        </SafeAreaView >
+        </SafeAreaView>
     );
 }

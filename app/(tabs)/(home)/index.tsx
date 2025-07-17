@@ -2,18 +2,13 @@ import DotPaginator from '@/components/DotPaginator';
 import { PET_OPTIONS } from '@/constants/pet';
 import { supabase } from '@/supabase/supabase';
 import { signOut } from '@/utils/auth';
-import { Entypo } from '@expo/vector-icons';
-import Feather from '@expo/vector-icons/Feather';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import Fontisto from '@expo/vector-icons/Fontisto';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { formatTimeAgo } from '@/utils/formating';
+import { Entypo, Feather, FontAwesome5, Fontisto, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { ko } from 'date-fns/locale';
 import { Link, router } from 'expo-router';
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 
 const fetchReports = async () => {
   const { data, error } = await supabase
@@ -43,10 +38,6 @@ const fetchReports = async () => {
 const getAnimalTypeLabel = (value) => {
   const option = PET_OPTIONS.find(option => option.value === value);
   return option ? option.label : '미지정';
-};
-
-const formatTimeAgo = (date) => {
-  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ko });
 };
 
 const ReportItem = ({ item }) => {
@@ -87,6 +78,26 @@ const ReportItem = ({ item }) => {
         </View>
       </View>
     </Link>
+  );
+};
+
+const ReportItemSkeleton = () => {
+  return (
+    <SkeletonPlaceholder
+      backgroundColor="#e5e7eb"
+      highlightColor="#f3f4f6"
+      speed={1000}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', paddingVertical: 20 }}>
+        <View style={{ width: 112, height: 112, borderRadius: 16, marginRight: 20 }} />
+        <View style={{ flex: 1 }}>
+          <View style={{ width: '80%', height: 20, borderRadius: 4, marginBottom: 8 }} />
+          <View style={{ width: '60%', height: 14, borderRadius: 4, marginBottom: 16 }} />
+          <View style={{ width: 100, height: 20, borderRadius: 4, marginBottom: 8 }} />
+          <View style={{ width: 50, height: 12, borderRadius: 4 }} />
+        </View>
+      </View>
+    </SkeletonPlaceholder>
   );
 };
 
@@ -230,7 +241,11 @@ export default function HomeScreen() {
           </View>
           <View>
             {isLoading ? (
-              <Text className="text-neutral-600 text-center">로딩 중...</Text>
+              <View style={{ width: pageWidth }}>
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <ReportItemSkeleton key={index} />
+                ))}
+              </View>
             ) : error ? (
               <Text className="text-red-500 text-center">오류: {(error as Error).message}</Text>
             ) : (
