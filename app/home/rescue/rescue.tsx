@@ -236,7 +236,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
                 type: 'error',
                 text1: '100만원을 넘을 수 없습니다',
                 text2: '',
-                position: 'bottom',
+                position: 'top',
                 visibilityTime: 2000,
             });
             if (Platform.OS === 'ios') {
@@ -258,7 +258,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
         <View className="flex-1">
             {(!activeField || activeField === 'category') && (
                 <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-                    <Text className="text-2xl mb-8 font-semibold">목격한 유기동물의 타입을 선택해주세요</Text>
+                    <Text className="text-2xl mb-8 font-semibold">어떤 가족을 찾아야하나요?</Text>
                     {PET_OPTIONS.map((option) => (
                         <Pressable
                             key={option.value}
@@ -277,7 +277,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
             )}
             {(!activeField || activeField === 'bounty') && (
                 <View>
-                    <Text className="text-2xl font-semibold">현상금 설정</Text>
+                    <Text className="text-2xl font-semibold">현상금을 설정할수있습니다.</Text>
                     <View className="mb-4">
                         <Controller
                             control={control}
@@ -295,7 +295,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
                                         <Text className="text-xl pl-1 font-bold text-neutral-700 pb-1">₩</Text>
                                     </View>
                                     <Text className="mt-3 mb-8 text-gray-600 leading-7">
-                                        현상금은 선택 사항입니다.
+                                        현상금을 설정하면 수색에 큰 도움이 될 수 있습니다.
                                     </Text>
                                     <View style={styles.sliderContainer}>
                                         <View style={styles.centerMark} />
@@ -331,31 +331,39 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
                                     </View>
                                     <View className="flex-row justify-between mt-8">
                                         <Pressable
-                                            className="bg-gray-100 px-5 py-3 rounded-lg flex-row items-center justify-center"
+                                            className="bg-gray-100 px-4 py-3 rounded-lg flex-row items-center justify-center"
                                             onPress={() => addBounty(10000)}
                                             disabled={isLoading}
                                             style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                                         >
-                                            <Text className="text-lg font-semibold text-neutral-700">1만원</Text>
-                                            <Entypo name="plus" className='ml-1' size={18} color="#404040" />
+                                            <Text className="text-lg font-semibold text-neutral-600">1만원</Text>
+                                            <Entypo name="plus" size={18} color="#404040" />
                                         </Pressable>
                                         <Pressable
-                                            className="bg-gray-100 px-5 py-3 rounded-lg flex-row items-center justify-center"
+                                            className="bg-gray-100 px-4 py-3 rounded-lg flex-row items-center justify-center"
                                             onPress={() => addBounty(50000)}
                                             disabled={isLoading}
                                             style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                                         >
-                                            <Text className="text-lg font-semibold text-neutral-700">5만원</Text>
-                                            <Entypo name="plus" className='ml-1' size={18} color="#404040" />
+                                            <Text className="text-lg font-semibold text-neutral-600">5만원</Text>
+                                            <Entypo name="plus" size={18} color="#404040" />
                                         </Pressable>
                                         <Pressable
-                                            className="bg-gray-100 px-5 py-3 rounded-lg flex-row items-center justify-center"
+                                            className="bg-gray-100 px-4 py-3 rounded-lg flex-row items-center justify-center"
                                             onPress={() => addBounty(100000)}
                                             disabled={isLoading}
                                             style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
                                         >
-                                            <Text className="text-lg font-semibold text-neutral-700">10만원</Text>
-                                            <Entypo name="plus" className='ml-1' size={18} color="#404040" />
+                                            <Text className="text-lg font-semibold text-neutral-600">10만원</Text>
+                                            <Entypo name="plus" size={18} color="#404040" />
+                                        </Pressable>
+                                        <Pressable
+                                            className="bg-gray-100 px-4 py-3 rounded-lg flex-row items-center justify-center"
+                                            onPress={() => addBounty(MAX - getValues('bounty'))}
+                                            disabled={isLoading || getValues('bounty') >= MAX}
+                                            style={({ pressed }) => ({ opacity: pressed && !isLoading && getValues('bounty') < MAX ? 0.7 : 1 })}
+                                        >
+                                            <Text className="text-lg font-semibold text-neutral-600">최대</Text>
                                         </Pressable>
                                     </View>
                                 </>
@@ -591,47 +599,18 @@ const ImageUploadSection = ({ control, setValue, getValues, isLoading, trigger }
 };
 
 const TagsSection = ({ control, setValue, getValues, isLoading, trigger }) => {
-    const [tags, setTags] = useState([]);
     const [selectedTags, setSelectedTags] = useState(getValues('tags') || []);
 
     const tagTranslations = {
-        young: '젊은',
-        timid: '겁 많은',
+        young: '어려요',
         elderly: '노령',
-        dont_catch: '잡지 마세요',
-        friendly: '친절한',
+        timid: '겁이 많아요',
+        dont_catch: '잡으려고 하지 마세요',
+        friendly: '사람을 잘 따라요',
         accessories: '액세서리 착용',
     };
 
-    useEffect(() => {
-        const fetchTags = async () => {
-            try {
-                const { data, error } = await supabase.from('rescue_tags').select('id, tag_name');
-                if (error) {
-                    Toast.show({
-                        type: 'error',
-                        text1: '태그 로드 실패',
-                        text2: error.message,
-                        position: 'top',
-                        visibilityTime: 3000,
-                    });
-                } else if (data && data.length > 0) {
-                    setTags(data);
-                } else {
-                    setTags([]);
-                }
-            } catch (err) {
-                Toast.show({
-                    type: 'error',
-                    text1: '태그 로드 실패',
-                    text2: '예상치 못한 오류가 발생했습니다.',
-                    position: 'top',
-                    visibilityTime: 3000,
-                });
-            }
-        };
-        fetchTags();
-    }, []);
+    const tagOptions = Object.keys(tagTranslations);
 
     useEffect(() => {
         setValue('tags', selectedTags);
@@ -639,38 +618,51 @@ const TagsSection = ({ control, setValue, getValues, isLoading, trigger }) => {
     }, [selectedTags, setValue, trigger]);
 
     const toggleTag = (tagName) => {
+        if (isLoading) return;
         setSelectedTags((prev) =>
             prev.includes(tagName) ? prev.filter((t) => t !== tagName) : [...prev, tagName]
         );
+        trigger('tags');
     };
 
     return (
         <View className="flex-1">
-            <Text className="text-2xl font-semibold">태그를 선택해주세요</Text>
-            <Text className="mt-3 mb-8 text-gray-600">구조와 관련된 태그를 여러 개 선택할 수 있습니다. (선택 사항)</Text>
-            <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-                {tags.length > 0 ? (
-                    tags.map((tag) => (
+            <Text className="text-2xl font-semibold">태그를 선택할수있어요</Text>
+            <Text className="mt-3 mb-8 text-gray-600">
+                잃어버린 반려동물에 특징을 선택해서 찾을 확률을 높여주세요.
+            </Text>
+            <ScrollView contentContainerStyle={{ paddingBottom: 150, paddingTop: 8 }}>
+                <View className="flex-row flex-wrap gap-2">
+                    {tagOptions.map((tagName) => (
                         <Pressable
-                            key={tag.id}
-                            className={`mb-4 px-5 py-4 rounded-3xl ${selectedTags.includes(tag.tag_name) ? 'bg-orange-500' : 'bg-gray-100'} border border-gray-200`}
-                            onPress={() => toggleTag(tag.tag_name)}
+                            key={tagName}
+                            className={[
+                                'mb-2 px-5 py-2 rounded-3xl border',
+                                selectedTags.includes(tagName)
+                                    ? 'bg-orange-500 border-orange-500'
+                                    : 'bg-gray-100 border-gray-200',
+                            ].join(' ')}
+                            onPress={() => toggleTag(tagName)}
                             disabled={isLoading}
-                            style={({ pressed }) => ({ opacity: pressed && !isLoading ? 0.7 : 1 })}
+                            style={({ pressed }) => ({
+                                opacity: pressed && !isLoading ? 0.8 : 1,
+                            })}
                         >
-                            <Text className={`text-lg font-semibold ${selectedTags.includes(tag.tag_name) ? 'text-white' : 'text-gray-600'}`}>
-                                {tagTranslations[tag.tag_name] || tag.tag_name}
+                            <Text
+                                className={[
+                                    'text-base font-semibold',
+                                    selectedTags.includes(tagName) ? 'text-white' : 'text-gray-600',
+                                ].join(' ')}
+                            >
+                                {tagTranslations[tagName]}
                             </Text>
                         </Pressable>
-                    ))
-                ) : (
-                    <Text className="text-center text-gray-500">태그가 없습니다. 관리자에게 문의하세요.</Text>
-                )}
+                    ))}
+                </View>
             </ScrollView>
         </View>
     );
 };
-
 const SubmitButton = ({ disabled, onPress, isLoading }) => (
     <Pressable
         className={`py-4 rounded-xl flex-1 ${disabled || isLoading ? 'bg-gray-300' : 'bg-orange-500'}`}
@@ -928,10 +920,10 @@ export default function RescuesCreateScreen() {
 
             Toast.show({
                 type: 'success',
-                text1: '구조 제보 등록 완료',
-                text2: `업로드 완료 (${data.images.length}장, ${Date.now() - startTime}ms)`,
+                text1: '성공적으로 구조 제보가 등록되었습니다',
+                text2: `꼭 찾기를 같이 기도드리겠습니다 🙏`,
                 position: 'top',
-                visibilityTime: 3000,
+                visibilityTime: 5000,
             });
             router.replace('/rescues');
         } catch (error) {

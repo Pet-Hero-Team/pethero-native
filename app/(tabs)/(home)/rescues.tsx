@@ -161,7 +161,7 @@ export default function RescuesScreen() {
                 </ShadowViewLight>
             </ScrollView>
             <Pressable
-                onPress={() => router.push('/home/rescue/rescue')}
+                onPress={() => router.push('/home/rescue/explanation')}
                 className="absolute bottom-5 right-5 bg-orange-500 rounded-full w-12 h-12 flex items-center justify-center shadow-lg"
                 style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
