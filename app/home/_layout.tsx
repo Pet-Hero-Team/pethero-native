@@ -4,6 +4,7 @@ export default function ChatLayout() {
     return (
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="report/report" />
+            <Stack.Screen name="rescue/rescue" />
         </Stack>
     );
 }

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native';
 
-export default function RestaurantListScreen() {
+export default function RescuesScreen() {
     const [isSearchVisible, setIsSearchVisible] = useState(false);
 
     return (
@@ -160,6 +160,13 @@ export default function RestaurantListScreen() {
                     </View>
                 </ShadowViewLight>
             </ScrollView>
+            <Pressable
+                onPress={() => router.push('/home/rescue/rescue')}
+                className="absolute bottom-5 right-5 bg-orange-500 rounded-full w-12 h-12 flex items-center justify-center shadow-lg"
+                style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            >
+                <Ionicons name="add" size={24} color="white" />
+            </Pressable>
         </SafeAreaView>
     );
 }
