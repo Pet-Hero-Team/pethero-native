@@ -106,5 +106,115 @@ const ReportItemSkeleton = () => {
 };
 
 
-export { AnswerSkeleton, QuestionDetailSkeleton, RelatedQuestionSkeleton, ReportItemSkeleton };
+const RescueItemSkeleton = () => {
+    return (
+        <View style={{
+            width: '100%',
+            backgroundColor: '#fff',
+            borderRadius: 16,
+            marginBottom: 16,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 8,
+            elevation: 3,
+        }}>
+            <SkeletonPlaceholder
+                backgroundColor="#e5e7eb"
+                highlightColor="#f3f4f6"
+                speed={1000}
+            >
+                <View>
+                    <View style={{
+                        width: '100%',
+                        height: 176,
+                        borderTopLeftRadius: 16,
+                        borderTopRightRadius: 16,
+                    }} />
+                    <View style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 20,
+                    }}>
+                        <View style={{
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                        }}>
+                            <View style={{
+                                width: '70%',
+                                height: 20,
+                                borderRadius: 4,
+                                marginBottom: 8,
+                            }} />
+                            <View style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                            }}>
+                                <View style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 2,
+                                    marginRight: 4,
+                                }} />
+                                <View style={{
+                                    width: 32,
+                                    height: 16,
+                                    borderRadius: 2,
+                                }} />
+                            </View>
+                        </View>
+                        <View style={{
+                            width: '40%',
+                            height: 20,
+                            borderRadius: 4,
+                            marginBottom: 8,
+                        }} />
+                        <View style={{
+                            width: '90%',
+                            height: 16,
+                            borderRadius: 4,
+                            marginBottom: 4,
+                        }} />
+                        <View style={{
+                            width: '70%',
+                            height: 16,
+                            borderRadius: 4,
+                            marginBottom: 8,
+                        }} />
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                        }}>
+                            <View style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: 2,
+                                marginRight: 8,
+                            }} />
+                            <View style={{
+                                width: '60%',
+                                height: 16,
+                                borderRadius: 4,
+                                marginRight: 8,
+                            }} />
+                            <View style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                marginRight: 8,
+                            }} />
+                            <View style={{
+                                width: '20%',
+                                height: 16,
+                                borderRadius: 4,
+                            }} />
+                        </View>
+                    </View>
+                </View>
+            </SkeletonPlaceholder>
+        </View>
+    );
+};
+
+export { AnswerSkeleton, QuestionDetailSkeleton, RelatedQuestionSkeleton, ReportItemSkeleton, RescueItemSkeleton };
 

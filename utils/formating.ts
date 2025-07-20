@@ -19,7 +19,8 @@ export const handleNumericInput = (text: string, maxValue: number): number | und
 
 export const formatDistance = (distance: number | null): string => {
   if (distance == null) return "거리 정보 없음";
-  if (distance < 1000) return `${distance}m`;
+  if (distance < 0.001) return "1m 미만";
+  if (distance < 1000) return `${Math.round(distance)}m`;
   return `${(distance / 1000).toFixed(1)}km`;
 };
 

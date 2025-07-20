@@ -376,7 +376,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
             {(!activeField || activeField === 'title') && (
                 <View>
                     <Text className="text-2xl font-semibold">제목을 적어주세요</Text>
-                    <Text className="mt-3 mb-8 text-gray-600">간단하게 어디에서 어떤 동물을 목격했는지 적어주세요</Text>
+                    <Text className="mt-3 mb-8 text-gray-600">간단하게 알기쉬운 제목을 적어주세요.</Text>
                     <View className="mb-4">
                         <Controller
                             control={control}
@@ -392,7 +392,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
                                     }}
                                     onFocus={() => setIsTitleFocused(true)}
                                     onBlur={() => setIsTitleFocused(false)}
-                                    placeholder="예시) 골든리트리버를 대리고 있습니다."
+                                    placeholder="예시) 집나간 고양이를 찾아주세요."
                                     placeholderTextColor="#9ca3af"
                                     className={`bg-white pb-5 text-xl border-b ${isTitleFocused ? 'border-gray-400' : 'border-gray-200'}`}
                                     maxLength={30}
@@ -411,8 +411,8 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
             )}
             {(!activeField || activeField === 'details') && (
                 <View className="flex-1">
-                    <Text className="text-2xl font-semibold">상세 정보를 입력해주세요</Text>
-                    <Text className="mt-3 mb-8 text-gray-600">목격 장소, 시간, 동물의 특징 등을 상세히 적어주세요.</Text>
+                    <Text className="text-2xl font-semibold">상세한 경위를 적어주세요</Text>
+                    <Text className="mt-3 mb-8 text-gray-600">마지막 실종 장소, 시간, 동물의 특징 등을 상세히 적어주세요.</Text>
                     <View className="flex-1 mb-4">
                         <Controller
                             control={control}
@@ -640,7 +640,7 @@ const TagsSection = ({ control, setValue, getValues, isLoading, trigger }) => {
                                 'mb-2 px-5 py-2 rounded-3xl border',
                                 selectedTags.includes(tagName)
                                     ? 'bg-orange-500 border-orange-500'
-                                    : 'bg-gray-100 border-gray-200',
+                                    : 'bg-white border-neutral-200',
                             ].join(' ')}
                             onPress={() => toggleTag(tagName)}
                             disabled={isLoading}
@@ -651,7 +651,7 @@ const TagsSection = ({ control, setValue, getValues, isLoading, trigger }) => {
                             <Text
                                 className={[
                                     'text-base font-semibold',
-                                    selectedTags.includes(tagName) ? 'text-white' : 'text-gray-600',
+                                    selectedTags.includes(tagName) ? 'text-white' : 'text-neutral-800',
                                 ].join(' ')}
                             >
                                 {tagTranslations[tagName]}
