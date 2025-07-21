@@ -171,12 +171,16 @@ export default function RescuesScreen() {
     }, [userLocation, activeTab, refetch]);
 
     useEffect(() => {
-        setIsSkeletonVisible(true);
-        const timer = setTimeout(() => {
+        if (isLoading) {
+            setIsSkeletonVisible(true);
+            const timer = setTimeout(() => {
+                setIsSkeletonVisible(false);
+            }, 2000);
+            return () => clearTimeout(timer);
+        } else {
             setIsSkeletonVisible(false);
-        }, 2000);
-        return () => clearTimeout(timer);
-    }, [isLoading, activeTab, searchQuery, userLocation]);
+        }
+    }, [isLoading]);
 
     const handleScroll = (event: any) => {
         const offsetY = event.nativeEvent.contentOffset.y;
