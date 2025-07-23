@@ -11,17 +11,12 @@ import Constants from "expo-constants";
 import * as Location from 'expo-location';
 import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Animated, Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import PagerView from 'react-native-pager-view';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-const posts = [
-  { id: 1, title: 'Restaurant Territórios', image: { uri: 'https://picsum.photos/500/300' } },
-  { id: 2, title: 'Les Champs Libres', image: { uri: 'https://picsum.photos/500/300' } },
-  { id: 3, title: 'Les Champs Libres', image: { uri: 'https://picsum.photos/500/300' } },
-];
 
 interface Item {
   id: string;
@@ -151,14 +146,32 @@ export default function MapsScreen() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [dataType, setDataType] = useState<'rescues' | 'sightings'>('rescues');
+  const [currentArea, setCurrentArea] = useState<string>('위치 정보 로드 중...');
   const router = useRouter();
   const [isMinimalUI, setIsMinimalUI] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [lastSnapIndexBeforeMapMode, setLastSnapIndexBeforeMapMode] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [shouldSparkle, setShouldSparkle] = useState(false);
 
   const snapPoints = useMemo(() => [60, 400, 620], []);
   const itemsPerPage = 10;
 
+  const triggerSparkle = useCallback(() => {
+    setShouldSparkle(true);
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0.4,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setShouldSparkle(false));
+  }, [fadeAnim]);
 
   const fetchData = async (region: Region, page: number, append: boolean = false) => {
     if (!userLocation) {
@@ -189,7 +202,7 @@ export default function MapsScreen() {
         .gte('longitude', lonMin)
         .lte('longitude', lonMax)
         .range(page * itemsPerPage, (page + 1) * itemsPerPage - 1)
-        .order('id', { ascending: true });
+        .order('id', { ascending: false });
 
       if (error) {
         throw new Error(`${dataType === 'rescues' ? '구조' : '목격'} 데이터 조회 실패: ${error.message}`);
@@ -215,6 +228,9 @@ export default function MapsScreen() {
       } else {
         setItems(processedData);
         setDisplayedItems(processedData);
+        if (processedData.length >= 3) {
+          triggerSparkle();
+        }
       }
       setHasMore(data.length === itemsPerPage);
       setError(null);
@@ -226,12 +242,32 @@ export default function MapsScreen() {
     }
   };
 
+  const getAdministrativeArea = async (latitude: number, longitude: number): Promise<string> => {
+    try {
+      const [location] = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const city = location.city || location.region || '';
+      const district = location.district || '';
+      if (city && district) {
+        return `${city} ${district}`;
+      } else if (city) {
+        return city;
+      } else if (district) {
+        return district;
+      }
+      return '위치 정보 없음';
+    } catch (err) {
+      console.error('Reverse geocode error:', err);
+      return '위치 정보 없음';
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
           setError('위치 권한이 허용되지 않았습니다.');
+          setCurrentArea('위치 권한 필요');
           return;
         }
 
@@ -247,6 +283,8 @@ export default function MapsScreen() {
           longitude: location.coords.longitude,
         });
         setCurrentRegion(initialRegion);
+        const area = await getAdministrativeArea(location.coords.latitude, location.coords.longitude);
+        setCurrentArea(area);
         if (mapRef.current) {
           mapRef.current.animateToRegion(initialRegion, 0);
         }
@@ -254,15 +292,10 @@ export default function MapsScreen() {
       } catch (err) {
         console.error('Location fetch error:', err);
         setError('위치를 가져오지 못했습니다.');
+        setCurrentArea('위치 정보 없음');
       }
     })();
   }, []);
-
-  useEffect(() => {
-    if (userLocation && currentRegion && !isInitialRegionSet && !loading) {
-      fetchData(currentRegion, 0);
-    }
-  }, [userLocation, dataType, isInitialRegionSet]);
 
   const handleSheetChanges = useCallback((index: number) => {
     if (index >= 0 && index < snapPoints.length) {
@@ -300,11 +333,11 @@ export default function MapsScreen() {
       <View className="w-full px-6 pt-1">
         <View className="flex-row">
           <Fontisto name="map-marker-alt" size={14} color="#404040" />
-          <Text className="ml-2 font-semibold text-neutral-700">서울특별시 강남구</Text>
+          <Text className="ml-2 font-semibold text-neutral-700">{currentArea}</Text>
         </View>
       </View>
     ),
-    []
+    [currentArea]
   );
 
   const renderContent = useCallback(() => {
@@ -337,7 +370,8 @@ export default function MapsScreen() {
       );
     }
 
-    const displayItems = currentSnapIndex === 2 ? items : items.slice(0, 2);
+    const recentItems = items.length >= 3 ? items.slice(0, 3) : [];
+    const displayItems = items.length >= 3 ? (currentSnapIndex === 2 ? items.slice(3) : items.slice(3, 5)) : items;
 
     return (
       <FlatList
@@ -380,40 +414,43 @@ export default function MapsScreen() {
         contentContainerStyle={{ paddingBottom: 24 }}
         ListHeaderComponent={() => (
           <View className="w-full px-6 pt-2 mb-8">
-            <View className="flex-row items-center mb-4">
-              <Text className="text-neutral-700 font-bold text-lg mr-1">추천 게시글</Text>
-              <TouchableOpacity activeOpacity={0.7}>
-                <MaterialIcons name="auto-awesome" size={14} color="#353535" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 12 }}
-            >
-              {posts.map((post) => (
-                <View
-                  key={post.id}
-                  className="w-46 h-36 rounded-lg overflow-hidden bg-white justify-end"
-                >
-                  <Image
-                    source={post.image}
-                    className="w-full h-full absolute"
-                    resizeMode="cover"
-                  />
-                  <View className="w-full py-2 px-3">
-                    <Text
-                      className="text-white text-base font-semibold"
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      style={{ width: 160, overflow: 'hidden' }}
-                    >
-                      {post.title}
-                    </Text>
-                  </View>
+            {recentItems.length > 0 && (
+              <>
+                <View className="flex-row items-center mb-4">
+                  <Fontisto name="map-marker-alt" size={14} color="#404040" />
+                  <Text className="ml-2 text-neutral-700 font-bold text-lg">{currentArea} 주변 게시글</Text>
                 </View>
-              ))}
-            </ScrollView>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 12 }}
+                >
+                  {recentItems.map((item, index) => (
+                    <Animated.View
+                      key={item.id}
+                      style={index === 0 && shouldSparkle ? { opacity: fadeAnim } : {}}
+                      className="w-46 h-36 rounded-lg overflow-hidden bg-white justify-end"
+                    >
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        className="w-full h-full absolute"
+                        resizeMode="cover"
+                      />
+                      <View className="w-full py-2 px-3">
+                        <Text
+                          className="text-white text-base font-semibold"
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                          style={{ width: 160, overflow: 'hidden' }}
+                        >
+                          {item.title}
+                        </Text>
+                      </View>
+                    </Animated.View>
+                  ))}
+                </ScrollView>
+              </>
+            )}
           </View>
         )}
         onScroll={(e) => {
@@ -438,7 +475,7 @@ export default function MapsScreen() {
         ) : null}
       />
     );
-  }, [currentSnapIndex, items, loading, error, moveToLocation, setIsMinimalUI, minContent, hasMore, page, currentRegion]);
+  }, [currentSnapIndex, items, loading, error, moveToLocation, setIsMinimalUI, minContent, hasMore, page, currentRegion, currentArea, shouldSparkle, fadeAnim]);
 
   const moveToUserLocation = async () => {
     if (userLocation && mapRef.current) {
@@ -455,6 +492,8 @@ export default function MapsScreen() {
         latitudeDelta: currentRegionData.latitudeDelta,
         longitudeDelta: currentRegionData.longitudeDelta,
       }, 350);
+      const area = await getAdministrativeArea(userLocation.latitude, userLocation.longitude);
+      setCurrentArea(area);
     } else {
       console.log('위치 정보를 사용할 수 없습니다.');
     }
@@ -496,15 +535,19 @@ export default function MapsScreen() {
     if (currentRegion) {
       setPage(0);
       fetchData(currentRegion, 0);
+      bottomSheetRef.current?.snapToIndex(1);
+      getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
     }
-  }, [currentRegion]);
+  }, [currentRegion, fetchData]);
 
   const handleSearch = useCallback(() => {
     if (searchQuery && currentRegion) {
       setPage(0);
       fetchData(currentRegion, 0);
+      bottomSheetRef.current?.snapToIndex(1);
+      getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
     }
-  }, [searchQuery, currentRegion]);
+  }, [searchQuery, currentRegion, fetchData]);
 
   const handleMapPress = useCallback(() => {
     if (currentSnapIndex === 1 || currentSnapIndex === 2) {
@@ -524,6 +567,8 @@ export default function MapsScreen() {
                 if (currentRegion && userLocation) {
                   setPage(0);
                   fetchData(currentRegion, 0);
+                  bottomSheetRef.current?.snapToIndex(1);
+                  getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
                 }
               }}
               className={`flex-row items-center border rounded-full px-4 py-3 ${dataType === 'rescues' ? 'bg-orange-200 border-orange-400' : 'bg-white border-neutral-300'}`}
@@ -537,6 +582,8 @@ export default function MapsScreen() {
                 if (currentRegion && userLocation) {
                   setPage(0);
                   fetchData(currentRegion, 0);
+                  bottomSheetRef.current?.snapToIndex(1);
+                  getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
                 }
               }}
               className={`flex-row items-center border rounded-full px-4 py-3 ml-3 ${dataType === 'sightings' ? 'bg-orange-200 border-orange-400' : 'bg-white border-neutral-300'}`}
@@ -554,7 +601,7 @@ export default function MapsScreen() {
         </View>
       </View>
     );
-  }, [moveToUserLocation, dataType, currentRegion, userLocation]);
+  }, [moveToUserLocation, dataType, currentRegion, userLocation, fetchData]);
 
   const renderBackdrop = useCallback(
     (props) => (
