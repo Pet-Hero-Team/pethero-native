@@ -297,6 +297,12 @@ export default function MapsScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    if (userLocation && currentRegion && !isInitialRegionSet && !loading) {
+      fetchData(currentRegion, 0);
+    }
+  }, [userLocation, dataType, isInitialRegionSet]);
+
   const handleSheetChanges = useCallback((index: number) => {
     if (index >= 0 && index < snapPoints.length) {
       setCurrentSnapIndex(index);
