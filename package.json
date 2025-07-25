@@ -11,6 +11,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@config-plugins/react-native-callkeep": "^11.0.0",
     "@config-plugins/react-native-webrtc": "^12.0.0",
     "@expo/vector-icons": "^14.1.0",
     "@gorhom/bottom-sheet": "^5.1.5",
@@ -50,6 +51,7 @@
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.4",
     "expo-system-ui": "~5.0.7",
+    "expo-updates": "~0.28.17",
     "expo-web-browser": "~14.1.6",
     "fuse.js": "^7.1.0",
     "lodash": "^4.17.21",
@@ -59,6 +61,7 @@
     "react-dom": "19.0.0",
     "react-hook-form": "^7.57.0",
     "react-native": "0.79.2",
+    "react-native-callkeep": "^4.3.16",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-image-viewing": "^0.2.2",
     "react-native-incall-manager": "^4.2.1",
@@ -73,6 +76,7 @@
     "react-native-svg": "15.11.2",
     "react-native-toast-message": "^2.3.3",
     "react-native-url-polyfill": "^2.0.0",
+    "react-native-voip-push-notification": "^3.3.3",
     "react-native-web": "~0.20.0",
     "react-native-webview": "13.13.5",
     "react-native-wheel-pick": "^1.2.5",
