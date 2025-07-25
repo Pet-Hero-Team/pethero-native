@@ -127,15 +127,19 @@ export default function MedicalScreen() {
                             </ShadowView>
                             <View className="w-4"></View>
                             <ShadowView className="rounded-3xl bg-white flex-1 justify-between py-6 px-5 w-1/2">
-                                <View>
-                                    <Text className="text-xl font-bold text-neutral-700 mb-2">비대면 진료</Text>
-                                    <Text className="text-neutral-500 mb-4">전화 및 영상통화 진료</Text>
-                                </View>
-                                <Image
-                                    source={require('@/assets/images/4.png')}
-                                    className="size-20 self-end"
-                                    resizeMode="contain"
-                                />
+                                <Link href="/medical/video/call-list" asChild>
+                                    <Pressable>
+                                        <View>
+                                            <Text className="text-xl font-bold text-neutral-700 mb-2">비대면 진료</Text>
+                                            <Text className="text-neutral-500 mb-4">전화 및 영상통화 진료</Text>
+                                        </View>
+                                        <Image
+                                            source={require('@/assets/images/4.png')}
+                                            className="size-20 self-end"
+                                            resizeMode="contain"
+                                        />
+                                    </Pressable>
+                                </Link>
                             </ShadowView>
                         </View>
                     </View>

@@ -101,6 +101,20 @@
         }
       ],
       [
+        "@config-plugins/react-native-callkeep",
+        {
+          "ios": {
+            "appName": "pethero-native",
+            "supportsVideo": false
+          },
+          "android": {
+            "alertTitle": "권한 필요",
+            "alertDescription": "전화 기능 사용을 위한 접근 권한이 필요합니다.",
+            "okButton": "확인"
+          }
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
