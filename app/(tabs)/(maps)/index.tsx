@@ -1,28 +1,31 @@
-import { ReportItemSkeleton } from '@/constants/skeletions';
 import { supabase } from '@/supabase/supabase';
-import { calculateDistance } from '@/utils/calculateDistance';
 import AntDesign from '@expo/vector-icons/AntDesign';
 import Fontisto from '@expo/vector-icons/Fontisto';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import Constants from "expo-constants";
+import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import { Link, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
+import { Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import PagerView from 'react-native-pager-view';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+const posts = [
+  { id: 1, title: 'Restaurant Territórios', image: { uri: 'https://picsum.photos/500/300' } },
+  { id: 2, title: 'Les Champs Libres', image: { uri: 'https://picsum.photos/500/300' } },
+  { id: 3, title: 'Les Champs Libres', image: { uri: 'https://picsum.photos/500/300' } },
+];
 
 interface Item {
   id: string;
   title: string;
   address: string;
-  price: number;
+  price?: number;
   distance: string;
   area: string;
   imageUrl: string;
@@ -88,9 +91,11 @@ const MapModeScreen = ({
                     <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
                     <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
                   </View>
-                  <Text className="font-semibold text-lg text-neutral-800 mt-1">
-                    {item.price.toLocaleString('ko-KR')}₩
-                  </Text>
+                  {item.price && (
+                    <Text className="font-semibold text-lg text-neutral-800 mt-1">
+                      {item.price.toLocaleString('ko-KR')}₩
+                    </Text>
+                  )}
                   <Text className="text-xs text-neutral-500 mt-2">
                     {item.distance} · {item.area}
                   </Text>
@@ -110,7 +115,7 @@ const MapModeScreen = ({
                   <Text className="text-sm text-white font-semibold ml-[1px]">3</Text>
                   <Text className="text-white text-lg font-bold text-center ml-2">제보하기</Text>
                 </Pressable>
-                <Link href={`/map/rescues/${item.id}`} asChild>
+                <Link href={`/map/${item.price ? 'rescues' : 'reports'}/${item.id}`} asChild>
                   <Pressable
                     onPress={() => moveToLocation(item.latitude, item.longitude)}
                     className="flex-1 bg-slate-700 py-3 rounded-lg ml-2"
@@ -142,101 +147,69 @@ export default function MapsScreen() {
   const [isMapMoved, setIsMapMoved] = useState(false);
   const [isInitialRegionSet, setIsInitialRegionSet] = useState(false);
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [dataType, setDataType] = useState<'rescues' | 'sightings'>('rescues');
+  const [dataType, setDataType] = useState<'rescues' | 'reports'>('rescues');
   const [currentArea, setCurrentArea] = useState<string>('위치 정보 로드 중...');
   const router = useRouter();
   const [isMinimalUI, setIsMinimalUI] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [lastSnapIndexBeforeMapMode, setLastSnapIndexBeforeMapMode] = useState(0);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const [shouldSparkle, setShouldSparkle] = useState(false);
 
   const snapPoints = useMemo(() => [60, 400, 620], []);
   const itemsPerPage = 10;
 
-  const triggerSparkle = useCallback(() => {
-    setShouldSparkle(true);
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0.4,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start(() => setShouldSparkle(false));
-  }, [fadeAnim]);
-
-  const fetchData = async (region: Region, page: number, append: boolean = false) => {
+  const fetchData = async (region: Region, dataType: 'rescues' | 'reports') => {
     if (!userLocation) {
-      console.log('Waiting for user location before fetching data');
+      console.log('사용자 위치 정보가 없어 데이터를 가져올 수 없습니다.');
+      setError('사용자 위치 정보를 가져오는 중입니다. 잠시 후 다시 시도하세요.');
       return;
     }
     try {
       setLoading(true);
-      const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
-      const latMin = latitude - latitudeDelta / 2;
-      const latMax = latitude + latitudeDelta / 2;
-      const lonMin = longitude - longitudeDelta / 2;
-      const lonMax = longitude + longitudeDelta / 2;
+      const { latitude, longitude } = region;
+      console.log(`Fetching ${dataType} with userLocation:`, userLocation, 'region:', region);
 
-      const { data, error } = await supabase
-        .from(dataType)
-        .select(`
-          id,
-          title,
-          address,
-          bounty,
-          latitude,
-          longitude,
-          rescues_images (url)
-        `)
-        .gte('latitude', latMin)
-        .lte('latitude', latMax)
-        .gte('longitude', lonMin)
-        .lte('longitude', lonMax)
-        .range(page * itemsPerPage, (page + 1) * itemsPerPage - 1)
-        .order('id', { ascending: false });
+      const { data, error } = await supabase.rpc(
+        dataType === 'rescues' ? 'get_rescues_with_distance' : 'get_reports_with_distance',
+        {
+          user_latitude: userLocation.latitude,
+          user_longitude: userLocation.longitude,
+        }
+      );
+
+      console.log(`${dataType} RPC response:`, { data, error });
 
       if (error) {
         throw new Error(`${dataType === 'rescues' ? '구조' : '목격'} 데이터 조회 실패: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        console.log(`No ${dataType} data found for the given location.`);
+        setItems([]);
+        setDisplayedItems([]);
+        setError(null);
+        return;
       }
 
       const processedData: Item[] = data.map((item: any) => ({
         id: item.id,
         title: item.title || '제목 없음',
         address: item.address || '위치 정보 없음',
-        price: item.bounty || 0,
-        distance: userLocation && item.latitude && item.longitude
-          ? `${(calculateDistance(userLocation.latitude, userLocation.longitude, item.latitude, item.longitude) * 1000).toFixed(0)}m`
-          : '알 수 없음',
+        price: dataType === 'rescues' ? item.bounty || 0 : undefined,
+        distance: item.distance ? `${item.distance.toFixed(0)}km` : '알 수 없음',
         area: item.address?.split(' ')[1] || '지역 정보 없음',
-        imageUrl: item.rescues_images?.[0]?.url || 'https://picsum.photos/200/300',
+        imageUrl: item.image_url || 'https://picsum.photos/200/300',
         latitude: item.latitude || 0,
         longitude: item.longitude || 0,
       }));
 
-      if (append) {
-        setItems((prev) => [...prev, ...processedData]);
-        setDisplayedItems((prev) => [...prev, ...processedData]);
-      } else {
-        setItems(processedData);
-        setDisplayedItems(processedData);
-        if (processedData.length >= 3) {
-          triggerSparkle();
-        }
-      }
-      setHasMore(data.length === itemsPerPage);
+      console.log(`Processed ${dataType} data:`, processedData);
+
+      setItems(processedData);
+      setDisplayedItems(processedData);
       setError(null);
     } catch (err) {
       console.error('Data fetch error:', err);
-      setError(`${dataType === 'rescues' ? '구조' : '목격'} 데이터를 불러오지 못했습니다.`);
+      setError(`${dataType === 'rescues' ? '구조' : '목격'} 데이터를 불러오지 못했습니다: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -247,14 +220,7 @@ export default function MapsScreen() {
       const [location] = await Location.reverseGeocodeAsync({ latitude, longitude });
       const city = location.city || location.region || '';
       const district = location.district || '';
-      if (city && district) {
-        return `${city} ${district}`;
-      } else if (city) {
-        return city;
-      } else if (district) {
-        return district;
-      }
-      return '위치 정보 없음';
+      return city && district ? `${city} ${district}` : city || district || '위치 정보 없음';
     } catch (err) {
       console.error('Reverse geocode error:', err);
       return '위치 정보 없음';
@@ -266,7 +232,7 @@ export default function MapsScreen() {
       try {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          setError('위치 권한이 허용되지 않았습니다.');
+          setError('위치 권한이 허용되지 않았습니다. 설정에서 권한을 허용해주세요.');
           setCurrentArea('위치 권한 필요');
           return;
         }
@@ -288,39 +254,43 @@ export default function MapsScreen() {
         if (mapRef.current) {
           mapRef.current.animateToRegion(initialRegion, 0);
         }
-        fetchData(initialRegion, 0);
+        // 위치 정보가 설정된 후 fetchData 호출
+        await fetchData(initialRegion, 'rescues');
       } catch (err) {
         console.error('Location fetch error:', err);
-        setError('위치를 가져오지 못했습니다.');
+        setError('위치를 가져오지 못했습니다. 네트워크 상태를 확인해주세요.');
         setCurrentArea('위치 정보 없음');
       }
     })();
   }, []);
 
   useEffect(() => {
-    if (userLocation && currentRegion && !isInitialRegionSet && !loading) {
-      fetchData(currentRegion, 0);
+    if (userLocation && currentRegion && isInitialRegionSet && !loading) {
+      fetchData(currentRegion, dataType);
     }
-  }, [userLocation, dataType, isInitialRegionSet]);
+  }, [dataType, isInitialRegionSet]);
 
-  const handleSheetChanges = useCallback((index: number) => {
-    if (index >= 0 && index < snapPoints.length) {
-      setCurrentSnapIndex(index);
-      if (!isMinimalUI) {
-        setLastSnapIndexBeforeMapMode(index);
+  const handleSheetChanges = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < snapPoints.length) {
+        setCurrentSnapIndex(index);
+        if (!isMinimalUI) {
+          setLastSnapIndexBeforeMapMode(index);
+        }
+        if (index === 2 && scrollOffset.current > 0) {
+          flatListRef.current?.scrollToOffset({ offset: scrollOffset.current, animated: false });
+        }
+      } else {
+        console.warn('Invalid snap index:', index, 'Reverting to index 0');
+        setCurrentSnapIndex(0);
+        setLastSnapIndexBeforeMapMode(0);
+        if (bottomSheetRef.current) {
+          bottomSheetRef.current.snapToIndex(0);
+        }
       }
-      if (index === 2 && scrollOffset.current > 0) {
-        flatListRef.current?.scrollToOffset({ offset: scrollOffset.current, animated: false });
-      }
-    } else {
-      console.warn('Invalid snap index:', index, 'Reverting to index 0');
-      setCurrentSnapIndex(0);
-      setLastSnapIndexBeforeMapMode(0);
-      if (bottomSheetRef.current) {
-        bottomSheetRef.current.snapToIndex(0);
-      }
-    }
-  }, [snapPoints, isMinimalUI]);
+    },
+    [snapPoints, isMinimalUI]
+  );
 
   useEffect(() => {
     if (isMinimalUI) {
@@ -351,11 +321,10 @@ export default function MapsScreen() {
       return minContent;
     }
 
-    if (loading && items.length === 0) {
+    if (loading) {
       return (
-        <View className="px-6 pb-6">
-          <ReportItemSkeleton />
-          <ReportItemSkeleton />
+        <View className="px-6 pb-6 flex-1 justify-center items-center">
+          <Text className="text-lg text-neutral-600">로딩 중...</Text>
         </View>
       );
     }
@@ -376,7 +345,7 @@ export default function MapsScreen() {
       );
     }
 
-    const recentItems = items.length >= 3 ? items.slice(0, 3) : [];
+    const recentItems = items.length >= 3 ? items.slice(0, 3) : items;
     const displayItems = items.length >= 3 ? (currentSnapIndex === 2 ? items.slice(3) : items.slice(3, 5)) : items;
 
     return (
@@ -398,9 +367,11 @@ export default function MapsScreen() {
                     <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
                     <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
                   </View>
-                  <Text className="font-semibold text-lg text-neutral-800 mt-1">
-                    {item.price.toLocaleString('ko-KR')}₩
-                  </Text>
+                  {item.price !== undefined && (
+                    <Text className="font-semibold text-lg text-neutral-800 mt-1">
+                      {Number(item.price).toLocaleString('ko-KR')}₩
+                    </Text>
+                  )}
                   <Text className="text-xs text-neutral-500 mt-2">
                     {item.distance} · {item.area}
                   </Text>
@@ -423,19 +394,22 @@ export default function MapsScreen() {
             {recentItems.length > 0 && (
               <>
                 <View className="flex-row items-center mb-4">
-                  <Fontisto name="map-marker-alt" size={14} color="#404040" />
-                  <Text className="ml-2 text-neutral-700 font-bold text-lg">{currentArea} 주변 게시글</Text>
+                  <Text className="text-neutral-700 font-bold text-lg mr-1">
+                    {currentArea} 주변 {dataType === 'rescues' ? '구조' : '목격'} 게시글
+                  </Text>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <MaterialIcons name="auto-awesome" size={14} color="#353535" />
+                  </TouchableOpacity>
                 </View>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={{ gap: 12 }}
                 >
-                  {recentItems.map((item, index) => (
-                    <Animated.View
+                  {recentItems.map((item) => (
+                    <View
                       key={item.id}
-                      style={index === 0 && shouldSparkle ? { opacity: fadeAnim } : {}}
-                      className="w-46 h-36 rounded-lg overflow-hidden bg-white justify-end"
+                      className="w-[184px] h-[144px] rounded-lg overflow-hidden bg-white justify-end"
                     >
                       <Image
                         source={{ uri: item.imageUrl }}
@@ -452,7 +426,7 @@ export default function MapsScreen() {
                           {item.title}
                         </Text>
                       </View>
-                    </Animated.View>
+                    </View>
                   ))}
                 </ScrollView>
               </>
@@ -467,21 +441,9 @@ export default function MapsScreen() {
           }
         }}
         scrollEventThrottle={16}
-        onEndReached={() => {
-          if (currentSnapIndex === 2 && hasMore && !loading && currentRegion) {
-            setPage((prev) => prev + 1);
-            fetchData(currentRegion, page + 1, true);
-          }
-        }}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={currentSnapIndex === 2 && loading ? () => (
-          <View className="py-4">
-            <Text className="text-center text-neutral-600">더 불러오는 중...</Text>
-          </View>
-        ) : null}
       />
     );
-  }, [currentSnapIndex, items, loading, error, moveToLocation, setIsMinimalUI, minContent, hasMore, page, currentRegion, currentArea, shouldSparkle, fadeAnim]);
+  }, [currentSnapIndex, items, loading, error, moveToLocation, setIsMinimalUI, minContent, dataType, currentArea]);
 
   const moveToUserLocation = async () => {
     if (userLocation && mapRef.current) {
@@ -500,8 +462,10 @@ export default function MapsScreen() {
       }, 350);
       const area = await getAdministrativeArea(userLocation.latitude, userLocation.longitude);
       setCurrentArea(area);
+      await fetchData(currentRegionData, dataType);
     } else {
       console.log('위치 정보를 사용할 수 없습니다.');
+      setError('위치 정보를 사용할 수 없습니다. 다시 시도해주세요.');
     }
   };
 
@@ -515,7 +479,7 @@ export default function MapsScreen() {
       }, 350);
     }
     if (id) {
-      const index = displayedItems.findIndex((item) => item.id === id);
+      const index = items.findIndex((item) => item.id === id);
       if (index !== -1) {
         setCurrentPage(index);
         setIsMinimalUI(true);
@@ -527,39 +491,30 @@ export default function MapsScreen() {
     setCurrentRegion(region);
   }, []);
 
-  const handleRegionChangeComplete = useCallback((region: Region) => {
-    setCurrentRegion(region);
-    if (!isInitialRegionSet) {
-      setIsInitialRegionSet(true);
-    } else {
-      setIsMapMoved(true);
-    }
-  }, [isInitialRegionSet]);
+  const handleRegionChangeComplete = useCallback(
+    (region: Region) => {
+      setCurrentRegion(region);
+      if (!isInitialRegionSet) {
+        setIsInitialRegionSet(true);
+      } else {
+        setIsMapMoved(true);
+      }
+    },
+    [isInitialRegionSet]
+  );
 
   const handleResearchLocation = useCallback(() => {
     setIsMapMoved(false);
     if (currentRegion) {
-      setPage(0);
-      fetchData(currentRegion, 0);
+      fetchData(currentRegion, dataType);
       bottomSheetRef.current?.snapToIndex(1);
       getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
     }
-  }, [currentRegion, fetchData]);
+  }, [currentRegion, dataType]);
 
-  const handleSearch = useCallback(() => {
-    if (searchQuery && currentRegion) {
-      setPage(0);
-      fetchData(currentRegion, 0);
-      bottomSheetRef.current?.snapToIndex(1);
-      getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
-    }
-  }, [searchQuery, currentRegion, fetchData]);
-
-  const handleMapPress = useCallback(() => {
-    if (currentSnapIndex === 1 || currentSnapIndex === 2) {
-      bottomSheetRef.current?.snapToIndex(0);
-    }
-  }, [currentSnapIndex]);
+  const handleSearchPress = () => {
+    router.push('/(maps)/search');
+  };
 
   const renderHandle = useCallback(() => {
     return (
@@ -571,8 +526,7 @@ export default function MapsScreen() {
               onPress={() => {
                 setDataType('rescues');
                 if (currentRegion && userLocation) {
-                  setPage(0);
-                  fetchData(currentRegion, 0);
+                  fetchData(currentRegion, 'rescues');
                   bottomSheetRef.current?.snapToIndex(1);
                   getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
                 }
@@ -584,18 +538,17 @@ export default function MapsScreen() {
             </Pressable>
             <Pressable
               onPress={() => {
-                setDataType('sightings');
+                setDataType('reports');
                 if (currentRegion && userLocation) {
-                  setPage(0);
-                  fetchData(currentRegion, 0);
+                  fetchData(currentRegion, 'reports');
                   bottomSheetRef.current?.snapToIndex(1);
                   getAdministrativeArea(currentRegion.latitude, currentRegion.longitude).then(setCurrentArea);
                 }
               }}
-              className={`flex-row items-center border rounded-full px-4 py-3 ml-3 ${dataType === 'sightings' ? 'bg-orange-200 border-orange-400' : 'bg-white border-neutral-300'}`}
+              className={`flex-row items-center border rounded-full px-4 py-3 ml-3 ${dataType === 'reports' ? 'bg-orange-200 border-orange-400' : 'bg-white border-neutral-300'}`}
             >
-              <AntDesign name="exclamationcircle" size={15} color={dataType === 'sightings' ? '#ea580c' : '#525252'} />
-              <Text className={`ml-2 font-bold ${dataType === 'sightings' ? 'text-orange-600' : 'text-neutral-600'}`}>목격</Text>
+              <AntDesign name="exclamationcircle" size={15} color={dataType === 'reports' ? '#ea580c' : '#525252'} />
+              <Text className={`ml-2 font-bold ${dataType === 'reports' ? 'text-orange-600' : 'text-neutral-600'}`}>목격</Text>
             </Pressable>
           </View>
           <Pressable
@@ -607,7 +560,7 @@ export default function MapsScreen() {
         </View>
       </View>
     );
-  }, [moveToUserLocation, dataType, currentRegion, userLocation, fetchData]);
+  }, [moveToUserLocation, dataType, currentRegion, userLocation]);
 
   const renderBackdrop = useCallback(
     (props) => (
@@ -623,22 +576,18 @@ export default function MapsScreen() {
 
   return (
     <GestureHandlerRootView style={styles.container} className="relative">
-      <View className="absolute z-50 top-10 w-full px-6">
-        <View className="flex-row items-center bg-white rounded-lg shadow-lg">
-          <TextInput
-            className="flex-1 p-4 text-base"
-            placeholder="구조, 목격, 모임을 검색해보세요."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearch}
-          />
-          <Pressable onPress={handleSearch} className="p-4">
+      <View className="absolute z-50 top-20 w-full px-6" style={isMinimalUI ? { display: 'none' } : {}}>
+        <Pressable onPress={handleSearchPress}>
+          <View className="flex-1 flex-row items-center justify-between bg-white rounded-lg pl-6 pr-4">
+            <View className="flex-row items-center py-4 text-base">
+              <Text className="text-base font-bold text-[#c7c7c7]">구조, 목격, 모임을 검색해보세요.</Text>
+            </View>
             <Fontisto name="search" size={18} color="#737373" />
-          </Pressable>
-        </View>
+          </View>
+        </Pressable>
         {isMapMoved && currentSnapIndex !== 2 && (
           <Pressable onPress={handleResearchLocation}>
-            <View className="bg-neutral-800 mx-auto px-4 py-3 rounded-full mt-4 flex-row items-center">
+            <View className="bg-neutral-800 mx-auto px-4 py-3 rounded-full mt-6 flex-row items-center">
               <Ionicons name="refresh" size={15} color="#f5f5f5" />
               <Text className="ml-2 text-xs font-bold text-neutral-100">현 지도 재검색</Text>
             </View>
@@ -664,17 +613,20 @@ export default function MapsScreen() {
         clusteringEnabled={true}
         clusterColor="#ff5733"
         clusterTextColor="#ffffff"
-        onPress={handleMapPress}
       >
         {displayedItems.map((item) => (
           <Marker
             key={item.id}
             coordinate={{ latitude: item.latitude, longitude: item.longitude }}
+            title={item.title}
+            description={item.address}
             onPress={() => moveToLocation(item.latitude, item.longitude, item.id)}
           >
             <View className="items-center">
               <View className="bg-orange-500 rounded-full px-3 py-1">
-                <Text className="text-white text-sm font-bold">{item.price.toLocaleString('ko-KR')}₩</Text>
+                <Text className="text-white text-sm font-bold">
+                  {item.price ? `${item.price.toLocaleString('ko-KR')}₩` : '목격'}
+                </Text>
               </View>
             </View>
           </Marker>
