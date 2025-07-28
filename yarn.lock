@@ -1381,6 +1381,11 @@
   resolved "https://registry.yarnpkg.com/@mj-studio/js-util/-/js-util-1.1.3.tgz#361e722faa34081413cec81caf75a6881f1f6cec"
   integrity sha512-XZe1V3J1CJ9DbPY0GlPTOES7UdnWcoUe3kIjmUWMvwmunOb/kYuDWiswu5eogHhcPSlM3LpYQYU2HhMzf3N6tw==
 
+"@mrakesh0608/react-native-loading-dots@^1.0.9":
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/@mrakesh0608/react-native-loading-dots/-/react-native-loading-dots-1.0.9.tgz#5d54062df6fc82ff699398e85d3fe75c91ffdfae"
+  integrity sha512-REs9PX5AdtO0dFLFuA2g/8PlYLJp50NbJcwoaYGRiyWXHZU3ePNw89hRImrf/TmFhjsEWxcLiHL40pCFGdcGsA==
+
 "@napi-rs/wasm-runtime@^0.2.11":
   version "0.2.12"
   resolved "https://registry.yarnpkg.com/@napi-rs/wasm-runtime/-/wasm-runtime-0.2.12.tgz#3e78a8b96e6c33a6c517e1894efbd5385a7cb6f2"
