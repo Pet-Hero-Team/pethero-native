@@ -90,7 +90,6 @@ const ReportItem = memo(
 
     const REPORT_ITEM_IMAGE_WIDTH = SCREEN_WIDTH - 44;
 
-
     const handleImageScrollEnd = useCallback((event: any) => {
       const contentOffsetX = event.nativeEvent.contentOffset.x;
       const newIndex = Math.round(contentOffsetX / REPORT_ITEM_IMAGE_WIDTH);
@@ -105,8 +104,6 @@ const ReportItem = memo(
       })
       .maxDuration(250)
       .numberOfTaps(1);
-
-
 
     const panGesture = Gesture.Pan()
       .activeOffsetX([-20, 20])
@@ -215,7 +212,6 @@ const MapModeScreen = memo(
     ];
 
     const IMAGE_DISPLAY_WIDTH = SCREEN_WIDTH - 56;
-
 
     const handleImageScrollEnd = useCallback((event: any) => {
       const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -378,6 +374,9 @@ export default function MapsScreen() {
   const [retryCount, setRetryCount] = useState(0);
   const [imageIndices, setImageIndices] = useState<{ [key: string]: number }>({});
   const areaCache = useRef<Map<string, string>>(new Map()).current;
+
+  const [markerTracksViewChanges, setMarkerTracksViewChanges] = useState<{ [key: string]: boolean }>({});
+
 
   const snapPoints = useMemo(() => [60, 360, SCREEN_HEIGHT - tabBarHeight - 20], []);
 
@@ -595,8 +594,6 @@ export default function MapsScreen() {
         if (index === 2 && scrollOffset.current > 0) {
           flatListRef.current?.scrollToOffset({ offset: scrollOffset.current, animated: false });
         }
-
-
         setEnableContentPanning(true);
       } else {
         console.warn('Invalid snap index:', index, 'Reverting to index 0');
@@ -689,7 +686,6 @@ export default function MapsScreen() {
         renderItem={({ item }) => (
           <ReportItem
             item={item}
-            currentSnapIndex={currentSnapIndex}
             activeImageIndex={imageIndices[item.id] || 0}
             setImageIndex={setImageIndex}
             flatListRef={flatListRef}
@@ -748,10 +744,20 @@ export default function MapsScreen() {
         setCurrentPage(index);
         setLastSnapIndexBeforeMapMode(currentSnapIndex);
         setIsMinimalUI(true);
-        setClickedMarkerIds((prev) => [...new Set([...prev, id])]);
+
+        setClickedMarkerIds((prev) => {
+          const newIds = [...new Set([...prev, id])];
+          return newIds;
+        });
+
+        setMarkerTracksViewChanges((prev) => ({ ...prev, [id]: true }));
+        setTimeout(() => {
+          setMarkerTracksViewChanges((prev) => ({ ...prev, [id]: false }));
+        }, 500);
       }
     }
   };
+
   const handleBackFromMapMode = useCallback(() => {
     setIsMinimalUI(false);
     if (bottomSheetRef.current) {
@@ -761,14 +767,31 @@ export default function MapsScreen() {
 
   const handleMapPress = useCallback(
     (event: any) => {
-      if (isMinimalUI && !event.nativeEvent.action) {
-        setIsMinimalUI(false);
-        if (bottomSheetRef.current) {
-          bottomSheetRef.current.snapToIndex(lastSnapIndexBeforeMapMode, { animated: false });
+      // 맵의 빈 공간 클릭 여부 확인
+      console.log('Map Press Event Action:', event.nativeEvent.action);
+      console.log('Current Snap Index:', currentSnapIndex);
+      console.log('Is Minimal UI:', isMinimalUI);
+
+      if (!event.nativeEvent.action) { // 'marker-press' 또는 'cluster-press' 액션이 아닐 때
+        if (isMinimalUI) {
+          console.log('Exiting minimal UI mode...');
+          setIsMinimalUI(false);
+          if (bottomSheetRef.current) {
+            bottomSheetRef.current.snapToIndex(lastSnapIndexBeforeMapMode, { animated: false });
+          }
+        } else if (currentSnapIndex === 1) { // 스냅포인트 1일 때 맵 클릭 시 0으로 내리기
+          console.log('Snapping to index 0 from index 1...');
+          if (bottomSheetRef.current) {
+            bottomSheetRef.current.snapToIndex(0);
+          }
+        } else {
+          console.log('Map pressed, but no action taken based on current state.');
         }
+      } else {
+        console.log('Map press was a marker or cluster press, ignoring for snap point change.');
       }
     },
-    [isMinimalUI, lastSnapIndexBeforeMapMode]
+    [isMinimalUI, lastSnapIndexBeforeMapMode, currentSnapIndex]
   );
 
   const handleRegionChange = useCallback((region: Region) => {
@@ -837,20 +860,25 @@ export default function MapsScreen() {
             key={item.id}
             coordinate={{ latitude: item.latitude, longitude: item.longitude }}
             onPress={() => moveToLocation(item.latitude, item.longitude, item.id)}
-            tracksViewChanges={false}
+            tracksViewChanges={markerTracksViewChanges[item.id] || false}
           >
             <View className="items-center">
               <View
                 className="rounded-full px-3 py-1"
-                style={{ backgroundColor: clickedMarkerIds.includes(item.id) ? '#4B5563' : '#FFFFFF' }}
+                style={{
+                  backgroundColor: clickedMarkerIds.includes(item.id) ? '#404040' : '#FFFFFF',
+                  borderWidth: clickedMarkerIds.includes(item.id) ? 0 : 1, // 여기!
+                  borderColor: '#E5E5E5'
+                }}
               >
                 <Text
                   className="text-sm font-bold"
-                  style={{ color: clickedMarkerIds.includes(item.id) ? '#FFFFFF' : '#4B5563' }}
+                  style={{ color: clickedMarkerIds.includes(item.id) ? '#FFFFFF' : '#404040' }}
                 >
                   목격
                 </Text>
               </View>
+
             </View>
           </Marker>
         ))}
