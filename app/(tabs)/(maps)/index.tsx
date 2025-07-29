@@ -121,10 +121,10 @@ const ReportItem = memo(
     }, [activeImageIndex, images.length]);
 
     return (
-      <View style={styles.listItemContainer}>
+      <View className='mb-16'>
         <GestureDetector gesture={combinedGesture}>
           <View>
-            <View style={[styles.imageContainer, { width: REPORT_ITEM_IMAGE_WIDTH, borderRadius: 8 }]}>
+            <View className='rounded-3xl' style={[styles.imageContainer, { width: REPORT_ITEM_IMAGE_WIDTH }]}>
               <FlatList
                 ref={imageFlatListRef}
                 horizontal
@@ -171,12 +171,17 @@ const ReportItem = memo(
                 </View>
               )}
             </View>
-            <Text className="text-xl text-neutral-800 font-bold mr-1 mt-2" numberOfLines={1}>{item.title}</Text>
-            <View className="flex-row items-center mt-1">
-              <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-              <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
+            <View className='pt-5 px-2'>
+              <View className='flex-row items-center justify-between'>
+                <Text className="text-xl text-neutral-800 font-bold" numberOfLines={1}>{item.title}</Text>
+                <View className='flex-row items-center'>
+                  <Fontisto name="map-marker-alt" size={12} color="#262626" />
+                  <Text className="text-neutral-800 font-semibold ml-1">{item.distance}</Text>
+                </View>
+              </View>
+              <Text className="text-neutral-500 leading-6 mt-2" numberOfLines={2}>{item.description}</Text>
+              <Text className='underline text-neutral-500 mt-4'>지도에서 보기</Text>
             </View>
-            <Text className="text-xs text-neutral-500 mt-2">{item.distance} · {item.area}</Text>
           </View>
         </GestureDetector>
       </View>
@@ -313,7 +318,7 @@ const MapModeScreen = memo(
               </View>
               <View className="py-5 px-4">
                 <Text className="text-lg text-neutral-800 font-semibold" numberOfLines={1}>{item.title}</Text>
-                <Text className="text-neutral-500 mt-1" numberOfLines={2}>{item.description}</Text>
+                <Text className="text-neutral-500 leading-6" numberOfLines={2}>{item.description}</Text>
                 <View className="flex-row items-center mt-3">
                   <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
                   <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
@@ -378,9 +383,9 @@ export default function MapsScreen() {
   const [markerTracksViewChanges, setMarkerTracksViewChanges] = useState<{ [key: string]: boolean }>({});
 
 
-  const snapPoints = useMemo(() => [60, 360, SCREEN_HEIGHT - tabBarHeight - 20], []);
+  const snapPoints = useMemo(() => [80, 360, SCREEN_HEIGHT - tabBarHeight - 20], []);
 
-  const debouncedRegion = useDebounce(currentRegion, 1000);
+  const debouncedRegion = useDebounce(currentRegion, 800);
 
   const setImageIndex = useCallback((id: string, index: number) => {
     setImageIndices((prev) => ({ ...prev, [id]: index }));
@@ -620,17 +625,15 @@ export default function MapsScreen() {
       }
     }
   }, [isMinimalUI, lastSnapIndexBeforeMapMode]);
-
   const minContent = useMemo(
     () => (
-      <View className="w-full px-6 pt-1">
+      <View className="w-full flex-row justify-center pt-8">
         <View className="flex-row">
-          <Fontisto name="map-marker-alt" size={14} color="#404040" />
-          <Text className="ml-2 font-semibold text-neutral-700">{currentArea}</Text>
+          <Text className="font-semibold text-neutral-800"><Text className='font-bold'>{currentArea} {items.length}</Text>개의 목격담</Text>
         </View>
       </View>
     ),
-    [currentArea]
+    [currentArea, items]
   );
 
   const renderCustomCluster = useCallback((cluster: any, onPress: () => void) => {
@@ -682,7 +685,7 @@ export default function MapsScreen() {
       <FlatList
         ref={flatListRef}
         data={items}
-        className="px-6 pt-4"
+        className="px-6 pt-10"
         renderItem={({ item }) => (
           <ReportItem
             item={item}
@@ -694,7 +697,6 @@ export default function MapsScreen() {
         keyExtractor={(item) => item.id}
         scrollEnabled={currentSnapIndex === 2}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 24 }}
         onScroll={(e) => {
           scrollOffset.current = e.nativeEvent.contentOffset.y;
           if (currentSnapIndex === 2 && scrollOffset.current < -70) {
@@ -767,20 +769,15 @@ export default function MapsScreen() {
 
   const handleMapPress = useCallback(
     (event: any) => {
-      // 맵의 빈 공간 클릭 여부 확인
-      console.log('Map Press Event Action:', event.nativeEvent.action);
-      console.log('Current Snap Index:', currentSnapIndex);
-      console.log('Is Minimal UI:', isMinimalUI);
 
-      if (!event.nativeEvent.action) { // 'marker-press' 또는 'cluster-press' 액션이 아닐 때
+      if (!event.nativeEvent.action) {
         if (isMinimalUI) {
           console.log('Exiting minimal UI mode...');
           setIsMinimalUI(false);
           if (bottomSheetRef.current) {
             bottomSheetRef.current.snapToIndex(lastSnapIndexBeforeMapMode, { animated: false });
           }
-        } else if (currentSnapIndex === 1) { // 스냅포인트 1일 때 맵 클릭 시 0으로 내리기
-          console.log('Snapping to index 0 from index 1...');
+        } else if (currentSnapIndex === 1) {
           if (bottomSheetRef.current) {
             bottomSheetRef.current.snapToIndex(0);
           }
@@ -811,8 +808,8 @@ export default function MapsScreen() {
 
   const renderHandle = useCallback(() => {
     return (
-      <View className="h-10 items-center justify-center relative z-10">
-        <View className="bg-gray-300 w-11 h-1.5 rounded-full mt-2" />
+      <View className="items-center justify-center relative z-10 pt-4">
+        <View className="bg-gray-300 w-11 h-1 rounded-full" />
         {minContent}
       </View>
     );
@@ -867,7 +864,7 @@ export default function MapsScreen() {
                 className="rounded-full px-3 py-1"
                 style={{
                   backgroundColor: clickedMarkerIds.includes(item.id) ? '#404040' : '#FFFFFF',
-                  borderWidth: clickedMarkerIds.includes(item.id) ? 0 : 1, // 여기!
+                  borderWidth: clickedMarkerIds.includes(item.id) ? 0 : 1,
                   borderColor: '#E5E5E5'
                 }}
               >
@@ -937,13 +934,10 @@ const styles = StyleSheet.create({
   pagerSlide: {
     marginHorizontal: 16,
   },
-  listItemContainer: {
-    marginBottom: 16,
-  },
   imageContainer: {
     overflow: 'hidden',
   },
   flatListImage: {
-    height: 300,
+    height: 400,
   },
 });
