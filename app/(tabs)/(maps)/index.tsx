@@ -19,8 +19,9 @@ import {
   View,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import MapClustering from 'react-native-map-clustering';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
-import Animated, { runOnJS, useAnimatedScrollHandler } from 'react-native-reanimated';
+import { runOnJS } from 'react-native-reanimated';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -69,18 +70,16 @@ interface Item {
 const ReportItem = memo(
   ({
     item,
-    currentSnapIndex,
     activeImageIndex,
     setImageIndex,
     flatListRef,
   }: {
     item: Item;
-    currentSnapIndex: number;
     activeImageIndex: number;
     setImageIndex: (id: string, index: number) => void;
     flatListRef: React.RefObject<FlatList>;
   }) => {
-    const imageScrollViewRef = useRef<Animated.ScrollView>(null);
+    const imageFlatListRef = useRef<FlatList>(null);
     const router = useRouter();
 
     const images = item.imageUrls.length > 0 ? item.imageUrls : [
@@ -91,11 +90,14 @@ const ReportItem = memo(
 
     const REPORT_ITEM_IMAGE_WIDTH = SCREEN_WIDTH - 44;
 
-    const scrollHandler = useAnimatedScrollHandler((event) => {
-      const contentOffsetX = event.contentOffset.x;
-      const index = Math.round(contentOffsetX / REPORT_ITEM_IMAGE_WIDTH);
-      runOnJS(setImageIndex)(item.id, index);
-    });
+
+    const handleImageScrollEnd = useCallback((event: any) => {
+      const contentOffsetX = event.nativeEvent.contentOffset.x;
+      const newIndex = Math.round(contentOffsetX / REPORT_ITEM_IMAGE_WIDTH);
+      if (newIndex !== activeImageIndex) {
+        setImageIndex(item.id, newIndex);
+      }
+    }, [item.id, activeImageIndex, REPORT_ITEM_IMAGE_WIDTH, setImageIndex]);
 
     const tapGesture = Gesture.Tap()
       .onEnd(() => {
@@ -104,6 +106,8 @@ const ReportItem = memo(
       .maxDuration(250)
       .numberOfTaps(1);
 
+
+
     const panGesture = Gesture.Pan()
       .activeOffsetX([-20, 20])
       .simultaneousWithExternalGesture(flatListRef);
@@ -111,9 +115,9 @@ const ReportItem = memo(
     const combinedGesture = Gesture.Exclusive(panGesture, tapGesture);
 
     useEffect(() => {
-      if (imageScrollViewRef.current && activeImageIndex >= 0 && activeImageIndex < images.length) {
-        imageScrollViewRef.current.scrollTo({
-          x: activeImageIndex * REPORT_ITEM_IMAGE_WIDTH,
+      if (imageFlatListRef.current && activeImageIndex >= 0 && activeImageIndex < images.length) {
+        imageFlatListRef.current.scrollToIndex({
+          index: activeImageIndex,
           animated: false,
         });
       }
@@ -124,14 +128,14 @@ const ReportItem = memo(
         <GestureDetector gesture={combinedGesture}>
           <View>
             <View style={[styles.imageContainer, { width: REPORT_ITEM_IMAGE_WIDTH, borderRadius: 8 }]}>
-              <Animated.ScrollView
-                ref={imageScrollViewRef}
+              <FlatList
+                ref={imageFlatListRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 snapToInterval={REPORT_ITEM_IMAGE_WIDTH}
-                snapToAlignment="center"
+                snapToAlignment="start"
                 decelerationRate="fast"
-                onScroll={scrollHandler}
+                onMomentumScrollEnd={handleImageScrollEnd}
                 scrollEventThrottle={16}
                 contentContainerStyle={[
                   { width: REPORT_ITEM_IMAGE_WIDTH * images.length },
@@ -139,18 +143,26 @@ const ReportItem = memo(
                 ]}
                 bounces={false}
                 scrollEnabled={images.length > 1}
-              >
-                {images.map((image, index) => (
+                data={images}
+                renderItem={({ item: imageUri, index }) => (
                   <Image
                     key={index}
-                    source={{ uri: image }}
-
+                    source={{ uri: imageUri }}
                     style={[styles.flatListImage, { width: REPORT_ITEM_IMAGE_WIDTH, resizeMode: 'cover' }]}
                     cachePolicy="memory-disk"
                     fadeDuration={0}
                   />
-                ))}
-              </Animated.ScrollView>
+                )}
+                keyExtractor={(imageUri, index) => `${item.id}-${index}`}
+                initialScrollIndex={activeImageIndex}
+                getItemLayout={(data, index) => (
+                  { length: REPORT_ITEM_IMAGE_WIDTH, offset: REPORT_ITEM_IMAGE_WIDTH * index, index }
+                )}
+                removeClippedSubviews={true}
+                initialNumToRender={1}
+                maxToRenderPerBatch={1}
+                windowSize={5}
+              />
               {images.length > 1 && (
                 <View className="flex-row justify-center absolute bottom-4 w-full">
                   {images.map((_, index) => (
@@ -162,7 +174,7 @@ const ReportItem = memo(
                 </View>
               )}
             </View>
-            <Text className="text-xl text-neutral-800 font-bold mr-1 mt-2">{item.title}</Text>
+            <Text className="text-xl text-neutral-800 font-bold mr-1 mt-2" numberOfLines={1}>{item.title}</Text>
             <View className="flex-row items-center mt-1">
               <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
               <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
@@ -176,138 +188,169 @@ const ReportItem = memo(
 );
 ReportItem.displayName = 'ReportItem';
 
-const MapModeScreen = ({
-  items,
-  currentPage,
-  onBack,
-  moveToUserLocation,
-  activeImageIndex,
-  setImageIndex,
-}: {
-  items: Item[];
-  currentPage: number;
-  onBack: () => void;
-  moveToUserLocation: () => Promise<void>;
-  activeImageIndex: number;
-  setImageIndex: (id: string, index: number) => void;
-}) => {
-  const item = items?.[currentPage];
-  const imageScrollViewRef = useRef<Animated.ScrollView>(null);
-  const router = useRouter();
+const MapModeScreen = memo(
+  ({
+    items,
+    currentPage,
+    onBack,
+    moveToUserLocation,
+    activeImageIndex,
+    setImageIndex,
+  }: {
+    items: Item[];
+    currentPage: number;
+    onBack: () => void;
+    moveToUserLocation: () => Promise<void>;
+    activeImageIndex: number;
+    setImageIndex: (id: string, index: number) => void;
+  }) => {
+    const item = items?.[currentPage];
+    const imageFlatListRef = useRef<FlatList>(null);
+    const router = useRouter();
 
-  const images = item?.imageUrls.length > 0 ? item.imageUrls : [
-    'https://picsum.photos/200/300',
-    'https://picsum.photos/200/301',
-    'https://picsum.photos/200/302',
-  ];
+    const images = item?.imageUrls.length > 0 ? item.imageUrls : [
+      'https://picsum.photos/200/300',
+      'https://picsum.photos/200/301',
+      'https://picsum.photos/200/302',
+    ];
 
-  const IMAGE_DISPLAY_WIDTH = SCREEN_WIDTH - 56;
+    const IMAGE_DISPLAY_WIDTH = SCREEN_WIDTH - 56;
 
-  const scrollHandler = useAnimatedScrollHandler((event) => {
-    const contentOffsetX = event.contentOffset.x;
-    const index = Math.round(contentOffsetX / IMAGE_DISPLAY_WIDTH);
-    if (item) {
-      runOnJS(setImageIndex)(item.id, index);
-    }
-  });
 
-  const tapGesture = Gesture.Tap()
-    .onEnd(() => {
-      if (item) {
-        runOnJS(router.push)(`/map/reports/${item.id}`);
+    const handleImageScrollEnd = useCallback((event: any) => {
+      const contentOffsetX = event.nativeEvent.contentOffset.x;
+      const newIndex = Math.round(contentOffsetX / IMAGE_DISPLAY_WIDTH);
+      if (item && newIndex !== activeImageIndex) {
+        setImageIndex(item.id, newIndex);
       }
-    })
-    .maxDuration(250)
-    .numberOfTaps(1);
+    }, [item, activeImageIndex, IMAGE_DISPLAY_WIDTH, setImageIndex]);
 
-  const panGesture = Gesture.Pan()
-    .activeOffsetX([-20, 20]);
+    const tapGesture = Gesture.Tap()
+      .onEnd(() => {
+        if (item) {
+          runOnJS(router.push)(`/map/reports/${item.id}`);
+        }
+      })
+      .maxDuration(250)
+      .numberOfTaps(1);
 
-  const combinedGesture = Gesture.Exclusive(panGesture, tapGesture);
+    const panGesture = Gesture.Pan()
+      .activeOffsetX([-20, 20]);
 
-  useEffect(() => {
-    if (imageScrollViewRef.current && activeImageIndex >= 0 && activeImageIndex < images.length) {
-      imageScrollViewRef.current.scrollTo({
-        x: activeImageIndex * IMAGE_DISPLAY_WIDTH,
-        animated: false,
-      });
+    const combinedGesture = Gesture.Exclusive(panGesture, tapGesture);
+
+    useEffect(() => {
+      if (imageFlatListRef.current && activeImageIndex >= 0 && activeImageIndex < images.length) {
+        imageFlatListRef.current.scrollToIndex({
+          index: activeImageIndex,
+          animated: false,
+        });
+      }
+    }, [activeImageIndex, images.length, IMAGE_DISPLAY_WIDTH]);
+
+    if (!item) {
+      return null;
     }
-  }, [activeImageIndex, images.length, IMAGE_DISPLAY_WIDTH]);
 
-  if (!item) {
-    return null;
-  }
+    const isScrollEnabled = images.length > 1;
 
-  const isScrollEnabled = images.length > 1;
-
-  return (
-    <View className="absolute left-0 right-0 bottom-4 z-50 w-full" pointerEvents="box-none">
-      <View className="flex-row justify-between mb-3 px-4">
-        <Pressable onPress={onBack} className="bg-white p-2 rounded-full shadow-lg z-[60]">
-          <Ionicons name="arrow-back" size={24} color="#262626" />
-        </Pressable>
-        <Pressable onPress={moveToUserLocation} className="bg-white p-2 rounded-full shadow-lg z-[60]">
-          <MaterialIcons name="my-location" size={24} color="#262626" />
-        </Pressable>
-      </View>
-      <View style={styles.pagerSlide} className="bg-white rounded-3xl mx-4">
-        <GestureDetector gesture={combinedGesture}>
-          <View>
-            <View style={[styles.imageContainer, { width: IMAGE_DISPLAY_WIDTH, borderStartStartRadius: 24, borderStartEndRadius: 24 }]}>
-              <Animated.ScrollView
-                ref={imageScrollViewRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                snapToInterval={IMAGE_DISPLAY_WIDTH}
-                snapToAlignment="center"
-                decelerationRate="fast"
-                onScroll={scrollHandler}
-                scrollEventThrottle={16}
-                contentContainerStyle={[
-                  styles.scrollViewContent,
-                  { width: IMAGE_DISPLAY_WIDTH * images.length },
-                  images.length === 1 && { flexGrow: 1, justifyContent: 'center' }
-                ]}
-                bounces={false}
-                scrollEnabled={isScrollEnabled}
-              >
-                {images.map((image, index) => (
-                  <Image
-                    key={index}
-                    source={{ uri: image }}
-
-                    style={[{ width: IMAGE_DISPLAY_WIDTH, height: 256, resizeMode: 'cover' }]}
-                    cachePolicy="memory-disk"
-                    fadeDuration={0}
-                  />
-                ))}
-              </Animated.ScrollView>
-              {isScrollEnabled && (
-                <View className="flex-row justify-center absolute bottom-4 w-full">
-                  {images.map((_, index) => (
-                    <View
+    return (
+      <View className="absolute left-0 right-0 bottom-4 z-50 w-full" pointerEvents="box-none">
+        <View className="flex-row justify-between mb-3 px-4">
+          <Pressable onPress={onBack} className="bg-white p-2 rounded-full shadow-lg z-[60]">
+            <Ionicons name="arrow-back" size={24} color="#262626" />
+          </Pressable>
+          <Pressable onPress={moveToUserLocation} className="bg-white p-2 rounded-full shadow-lg z-[60]">
+            <MaterialIcons name="my-location" size={24} color="#262626" />
+          </Pressable>
+        </View>
+        <View style={styles.pagerSlide} className="bg-white rounded-3xl mx-4">
+          <GestureDetector gesture={combinedGesture}>
+            <View>
+              <View style={[styles.imageContainer, { width: IMAGE_DISPLAY_WIDTH, borderTopLeftRadius: 24, borderTopRightRadius: 24 }]}>
+                <FlatList
+                  ref={imageFlatListRef}
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={IMAGE_DISPLAY_WIDTH}
+                  snapToAlignment="start"
+                  decelerationRate="fast"
+                  onMomentumScrollEnd={handleImageScrollEnd}
+                  scrollEventThrottle={16}
+                  contentContainerStyle={[
+                    styles.scrollViewContent,
+                    { width: IMAGE_DISPLAY_WIDTH * images.length },
+                    images.length === 1 && { flexGrow: 1, justifyContent: 'center' }
+                  ]}
+                  bounces={false}
+                  scrollEnabled={isScrollEnabled}
+                  data={images}
+                  renderItem={({ item: imageUri, index }) => (
+                    <Image
                       key={index}
-                      className={`h-2 w-2 mx-1 rounded-full ${activeImageIndex === index ? 'bg-white' : 'bg-white/50'}`}
+                      source={{ uri: imageUri }}
+                      style={[{ width: IMAGE_DISPLAY_WIDTH, height: 220, resizeMode: 'cover' }]}
+                      cachePolicy="memory-disk"
+                      fadeDuration={0}
                     />
-                  ))}
-                </View>
-              )}
-            </View>
-            <View className="py-3 px-4">
-              <Text className="text-lg text-neutral-800 font-semibold">{item.title}</Text>
-              <Text className="text-neutral-500 mt-1" numberOfLines={1}>{item.description}</Text>
-              <View className="flex-row items-center mt-2">
-                <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
-                <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
+                  )}
+                  keyExtractor={(imageUri, index) => `${item?.id}-${index}`}
+                  initialScrollIndex={activeImageIndex}
+                  getItemLayout={(data, index) => (
+                    { length: IMAGE_DISPLAY_WIDTH, offset: IMAGE_DISPLAY_WIDTH * index, index }
+                  )}
+                  removeClippedSubviews={true}
+                  initialNumToRender={1}
+                  maxToRenderPerBatch={1}
+                  windowSize={5}
+                />
+                {isScrollEnabled && (
+                  <View className="flex-row justify-center absolute bottom-4 w-full">
+                    {images.map((_, index) => (
+                      <View
+                        key={index}
+                        className={`h-2 w-2 mx-1 rounded-full ${activeImageIndex === index ? 'bg-white' : 'bg-white/50'}`}
+                      />
+                    ))}
+                  </View>
+                )}
               </View>
-              <Text className="text-base font-semibold text-neutral-800 mt-2">{item.distance}</Text>
+              <View className="py-5 px-4">
+                <Text className="text-lg text-neutral-800 font-semibold" numberOfLines={1}>{item.title}</Text>
+                <Text className="text-neutral-500 mt-1" numberOfLines={2}>{item.description}</Text>
+                <View className="flex-row items-center mt-3">
+                  <Fontisto name="map-marker-alt" size={12} color="#a3a3a3" />
+                  <Text className="text-sm text-neutral-600 ml-1">{item.address}</Text>
+                </View>
+              </View>
             </View>
-          </View>
-        </GestureDetector>
+          </GestureDetector>
+        </View>
       </View>
-    </View>
-  );
-};
+    );
+  }
+);
+MapModeScreen.displayName = 'MapModeScreen';
+
+const ClusterMarkerContent = memo(({ pointCount, clusterSize }: { pointCount: number; clusterSize: number }) => (
+  <View style={{
+    width: clusterSize,
+    height: clusterSize,
+    borderRadius: clusterSize / 2,
+    backgroundColor: '#ff5733',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }}>
+    <Text style={{
+      color: '#ffffff',
+      fontWeight: 'bold',
+      fontSize: 16,
+    }}>
+      {pointCount}
+    </Text>
+  </View>
+));
+ClusterMarkerContent.displayName = 'ClusterMarkerContent';
 
 export default function MapsScreen() {
   const bottomSheetRef = useRef<BottomSheet>(null);
@@ -552,6 +595,8 @@ export default function MapsScreen() {
         if (index === 2 && scrollOffset.current > 0) {
           flatListRef.current?.scrollToOffset({ offset: scrollOffset.current, animated: false });
         }
+
+
         setEnableContentPanning(true);
       } else {
         console.warn('Invalid snap index:', index, 'Reverting to index 0');
@@ -569,7 +614,6 @@ export default function MapsScreen() {
   useEffect(() => {
     if (isMinimalUI) {
       if (bottomSheetRef.current) {
-        bottomSheetRef.current.snapToIndex(0);
         setEnableContentPanning(false);
       }
     } else {
@@ -591,6 +635,22 @@ export default function MapsScreen() {
     ),
     [currentArea]
   );
+
+  const renderCustomCluster = useCallback((cluster: any, onPress: () => void) => {
+    const { pointCount, coordinate, clusterId } = cluster;
+    const clusterSize = Math.min(pointCount * 2 + 10, 60);
+
+    return (
+      <Marker
+        key={clusterId}
+        coordinate={coordinate}
+        onPress={onPress}
+        tracksViewChanges={false}
+      >
+        <ClusterMarkerContent pointCount={pointCount} clusterSize={clusterSize} />
+      </Marker>
+    );
+  }, []);
 
   const renderContent = useCallback(() => {
     if (currentSnapIndex === 0) {
@@ -686,22 +746,29 @@ export default function MapsScreen() {
       const index = items.findIndex((item) => item.id === id);
       if (index !== -1) {
         setCurrentPage(index);
+        setLastSnapIndexBeforeMapMode(currentSnapIndex);
         setIsMinimalUI(true);
         setClickedMarkerIds((prev) => [...new Set([...prev, id])]);
       }
     }
   };
+  const handleBackFromMapMode = useCallback(() => {
+    setIsMinimalUI(false);
+    if (bottomSheetRef.current) {
+      bottomSheetRef.current.snapToIndex(lastSnapIndexBeforeMapMode, { animated: false });
+    }
+  }, [lastSnapIndexBeforeMapMode]);
 
   const handleMapPress = useCallback(
     (event: any) => {
       if (isMinimalUI && !event.nativeEvent.action) {
         setIsMinimalUI(false);
         if (bottomSheetRef.current) {
-          bottomSheetRef.current.snapToIndex(0);
+          bottomSheetRef.current.snapToIndex(lastSnapIndexBeforeMapMode, { animated: false });
         }
       }
     },
-    [isMinimalUI]
+    [isMinimalUI, lastSnapIndexBeforeMapMode]
   );
 
   const handleRegionChange = useCallback((region: Region) => {
@@ -745,7 +812,7 @@ export default function MapsScreen() {
         </View>
       )}
 
-      <MapView
+      <MapClustering
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
@@ -760,16 +827,17 @@ export default function MapsScreen() {
         onRegionChange={handleRegionChange}
         onRegionChangeComplete={handleRegionChangeComplete}
         onMapReady={() => console.log('Map ready, API Key:', Constants.expoConfig?.extra?.googleMapsApiKey)}
-        clusteringEnabled={true}
-        clusterColor="#ff5733"
+        clusterColor="#ff532c"
         clusterTextColor="#ffffff"
         onPress={handleMapPress}
+        renderCustomCluster={renderCustomCluster}
       >
         {displayedItems.map((item) => (
           <Marker
             key={item.id}
             coordinate={{ latitude: item.latitude, longitude: item.longitude }}
             onPress={() => moveToLocation(item.latitude, item.longitude, item.id)}
+            tracksViewChanges={false}
           >
             <View className="items-center">
               <View
@@ -786,7 +854,7 @@ export default function MapsScreen() {
             </View>
           </Marker>
         ))}
-      </MapView>
+      </MapClustering>
 
       <BottomSheet
         ref={bottomSheetRef}
@@ -819,7 +887,7 @@ export default function MapsScreen() {
           <MapModeScreen
             items={displayedItems}
             currentPage={currentPage}
-            onBack={() => setIsMinimalUI(false)}
+            onBack={handleBackFromMapMode}
             moveToUserLocation={moveToUserLocation}
             activeImageIndex={imageIndices[displayedItems[currentPage]?.id] || 0}
             setImageIndex={setImageIndex}
@@ -850,5 +918,4 @@ const styles = StyleSheet.create({
   flatListImage: {
     height: 300,
   },
-
 });
