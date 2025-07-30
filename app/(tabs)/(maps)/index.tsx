@@ -10,6 +10,7 @@ import { useRouter } from 'expo-router';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Image,
@@ -60,7 +61,7 @@ interface Item {
   title: string;
   description: string;
   address: string;
-  distance: string;
+  distance: number;
   area: string;
   imageUrls: string[];
   latitude: number;
@@ -73,11 +74,13 @@ const ReportItem = memo(
     activeImageIndex,
     setImageIndex,
     flatListRef,
+    moveToLocation,
   }: {
     item: Item;
     activeImageIndex: number;
     setImageIndex: (id: string, index: number) => void;
     flatListRef: React.RefObject<FlatList>;
+    moveToLocation: (latitude: number, longitude: number, id?: string) => void;
   }) => {
     const imageFlatListRef = useRef<FlatList>(null);
     const router = useRouter();
@@ -98,7 +101,8 @@ const ReportItem = memo(
       }
     }, [item.id, activeImageIndex, REPORT_ITEM_IMAGE_WIDTH, setImageIndex]);
 
-    const tapGesture = Gesture.Tap()
+
+    const tapGestureForDetail = Gesture.Tap()
       .onEnd(() => {
         runOnJS(router.push)(`/map/reports/${item.id}`);
       })
@@ -109,7 +113,7 @@ const ReportItem = memo(
       .activeOffsetX([-20, 20])
       .simultaneousWithExternalGesture(flatListRef);
 
-    const combinedGesture = Gesture.Exclusive(panGesture, tapGesture);
+    const combinedGesture = Gesture.Exclusive(panGesture, tapGestureForDetail);
 
     useEffect(() => {
       if (imageFlatListRef.current && activeImageIndex >= 0 && activeImageIndex < images.length) {
@@ -121,7 +125,8 @@ const ReportItem = memo(
     }, [activeImageIndex, images.length]);
 
     return (
-      <View className='mb-16'>
+      <View className='mb-10'>
+        {/* '지도에서 보기' 부분을 제외한 나머지 영역에 GestureDetector 적용 */}
         <GestureDetector gesture={combinedGesture}>
           <View>
             <View className='rounded-3xl' style={[styles.imageContainer, { width: REPORT_ITEM_IMAGE_WIDTH }]}>
@@ -176,14 +181,17 @@ const ReportItem = memo(
                 <Text className="text-xl text-neutral-800 font-bold" numberOfLines={1}>{item.title}</Text>
                 <View className='flex-row items-center'>
                   <Fontisto name="map-marker-alt" size={12} color="#262626" />
-                  <Text className="text-neutral-800 font-semibold ml-1">{item.distance}</Text>
+                  <Text className="text-neutral-800 font-semibold ml-1">{item.distance.toFixed(0)}km</Text>
                 </View>
               </View>
               <Text className="text-neutral-500 leading-6 mt-2" numberOfLines={2}>{item.description}</Text>
-              <Text className='underline text-neutral-500 mt-4'>지도에서 보기</Text>
             </View>
           </View>
         </GestureDetector>
+        {/* '지도에서 보기' Pressable은 GestureDetector 외부에 위치 */}
+        <Pressable onPress={() => moveToLocation(item.latitude, item.longitude, item.id)} className='px-2'>
+          <Text className='underline text-neutral-500 mt-4'>지도에서 보기</Text>
+        </Pressable>
       </View>
     );
   }
@@ -378,7 +386,9 @@ export default function MapsScreen() {
   const [isMapLoading, setIsMapLoading] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [imageIndices, setImageIndices] = useState<{ [key: string]: number }>({});
-  const areaCache = useRef<Map<string, string>>(new Map()).current;
+  const areaCache = useRef<Map<string, string>>().current;
+  const [isWideView, setIsWideView] = useState(false);
+  const [noDataInView, setNoDataInView] = useState(false);
 
   const [markerTracksViewChanges, setMarkerTracksViewChanges] = useState<{ [key: string]: boolean }>({});
 
@@ -396,6 +406,7 @@ export default function MapsScreen() {
     try {
       setLoading(true);
       setIsMapLoading(true);
+      setNoDataInView(false);
       const { latitude, longitude, latitudeDelta, longitudeDelta } = region;
       const min_lat = latitude - latitudeDelta / 2;
       const max_lat = latitude + latitudeDelta / 2;
@@ -418,7 +429,8 @@ export default function MapsScreen() {
       if (!data || data.length === 0) {
         setItems([]);
         setDisplayedItems([]);
-        setError('현재 지역에 목격 데이터가 없습니다.');
+        setError(null);
+        setNoDataInView(true);
         return;
       }
 
@@ -436,7 +448,7 @@ export default function MapsScreen() {
           title: item.title || '제목 없음',
           address: item.address || '위치 정보 없음',
           description: item.description || '설명 정보 없음',
-          distance: item.distance ? `${item.distance.toFixed(0)}km` : '알 수 없음',
+          distance: item.distance || 0,
           area: item.address?.split(' ')[1] || '지역 정보 없음',
           imageUrls,
           latitude: item.latitude || 0,
@@ -569,6 +581,61 @@ export default function MapsScreen() {
     }
   };
 
+  const fetchNearestData = async () => {
+    if (!userLocation) {
+      Alert.alert('위치 정보 없음', '현재 위치를 가져올 수 없습니다. 위치 권한을 확인해주세요.');
+      return;
+    }
+    setLoading(true);
+    setIsMapLoading(true);
+
+    try {
+      const { data, error } = await supabase.rpc('get_nearest_maps_reports', {
+        user_latitude: userLocation.latitude,
+        user_longitude: userLocation.longitude,
+      });
+
+      if (error) {
+        throw new Error(`가까운 목격 데이터 조회 실패: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        setError('가까운 목격 데이터를 찾을 수 없습니다.');
+        setLoading(false);
+        setIsMapLoading(false);
+        return;
+      }
+
+      const nearestItem = data[0];
+      const newRegion = {
+        latitude: nearestItem.latitude,
+        longitude: nearestItem.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      };
+
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(newRegion, 500);
+        setCurrentRegion(newRegion);
+        setPrevRegion(newRegion);
+      }
+
+      const area = await getAdministrativeArea(nearestItem.latitude, nearestItem.longitude);
+      setCurrentArea(area);
+
+      await fetchData(newRegion);
+
+      setLoading(false);
+      setIsMapLoading(false);
+      setNoDataInView(false);
+    } catch (err: any) {
+      setError(`가까운 목격 데이터를 불러오지 못했습니다: ${err.message}`);
+      setLoading(false);
+      setIsMapLoading(false);
+    }
+  };
+
+
   useEffect(() => {
     initializeLocation();
   }, []);
@@ -587,7 +654,7 @@ export default function MapsScreen() {
         setPrevRegion(debouncedRegion);
       }
     }
-  }, [debouncedRegion, isInitialRegionSet, prevRegion]);
+  }, [debouncedRegion, isInitialRegionSet, prevRegion, loading]);
 
   const handleSheetChanges = useCallback(
     (index: number) => {
@@ -625,16 +692,30 @@ export default function MapsScreen() {
       }
     }
   }, [isMinimalUI, lastSnapIndexBeforeMapMode]);
+
   const minContent = useMemo(
     () => (
-      <View className="w-full flex-row justify-center pt-8">
+      <View className="w-full flex-row justify-center pt-8 border-b border-neutral-200 pb-8">
         <View className="flex-row">
-          <Text className="font-semibold text-neutral-800"><Text className='font-bold'>{currentArea} {items.length}</Text>개의 목격담</Text>
+          {loading ? (
+            <Text className="font-semibold text-neutral-800">
+              {isWideView ? null : <Text className='font-bold'>{currentArea}</Text>} 로딩 중...
+            </Text>
+          ) : error ? (
+            <Text className="font-semibold text-red-500">
+              {isWideView ? null : <Text className='font-bold'>{currentArea}</Text>} 데이터 로드 실패
+            </Text>
+          ) : (
+            <Text className="font-semibold text-neutral-800">
+              {isWideView ? null : <Text className='font-bold'>{currentArea}</Text>} {items.length}개의 목격담
+            </Text>
+          )}
         </View>
       </View>
     ),
-    [currentArea, items]
+    [currentArea, items.length, loading, error, isWideView]
   );
+
 
   const renderCustomCluster = useCallback((cluster: any, onPress: () => void) => {
     const { pointCount, coordinate, clusterId } = cluster;
@@ -660,7 +741,8 @@ export default function MapsScreen() {
     if (loading) {
       return (
         <View className="px-6 pb-6 flex-1 justify-center items-center">
-          <Text className="text-lg text-neutral-600">로딩 중...</Text>
+          <ActivityIndicator size="large" color="#262626" />
+          <Text className="text-lg text-neutral-600 mt-4">로딩 중...</Text>
         </View>
       );
     }
@@ -673,10 +755,14 @@ export default function MapsScreen() {
       );
     }
 
+
     if (items.length === 0) {
       return (
-        <View className="px-6 pb-6 flex-1 justify-center items-center">
-          <Text className="text-lg text-neutral-600">현재 지역에 데이터가 없습니다.</Text>
+        <View className="mt-8 mx-8">
+          <Text className=" text-neutral-800 pt-6">(귀뚜라미 소리)...</Text>
+          <Pressable onPress={fetchNearestData} className="py-4 mt-6 border-neutral-200 border rounded-xl">
+            <Text className="font-semibold text-neutral-800 text-center">가까운 위치에서 찾기</Text>
+          </Pressable>
         </View>
       );
     }
@@ -692,6 +778,7 @@ export default function MapsScreen() {
             activeImageIndex={imageIndices[item.id] || 0}
             setImageIndex={setImageIndex}
             flatListRef={flatListRef}
+            moveToLocation={moveToLocation}
           />
         )}
         keyExtractor={(item) => item.id}
@@ -708,7 +795,7 @@ export default function MapsScreen() {
         nestedScrollEnabled={true}
       />
     );
-  }, [currentSnapIndex, items, loading, error, imageIndices, setImageIndex]);
+  }, [currentSnapIndex, items, loading, error, imageIndices, setImageIndex, fetchNearestData, moveToLocation]);
 
   const moveToUserLocation = async () => {
     const fallbackLocation = userLocation || { latitude: 37.5665, longitude: 126.9780 };
@@ -739,7 +826,16 @@ export default function MapsScreen() {
     }
   };
 
-  const moveToLocation = (latitude: number, longitude: number, id?: string) => {
+  const moveToLocation = useCallback((latitude: number, longitude: number, id?: string) => {
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: latitude,
+        longitude: longitude,
+        latitudeDelta: 0.015,
+        longitudeDelta: 0.0121,
+      }, 350);
+    }
+
     if (id) {
       const index = items.findIndex((item) => item.id === id);
       if (index !== -1) {
@@ -758,7 +854,7 @@ export default function MapsScreen() {
         }, 500);
       }
     }
-  };
+  }, [items, currentSnapIndex]);
 
   const handleBackFromMapMode = useCallback(() => {
     setIsMinimalUI(false);
@@ -798,12 +894,18 @@ export default function MapsScreen() {
   const handleRegionChangeComplete = useCallback(
     (region: Region) => {
       setCurrentRegion(region);
+
+      const isCurrentlyWide = region.latitudeDelta > 0.1;
+      if (isCurrentlyWide !== isWideView) {
+        setIsWideView(isCurrentlyWide);
+      }
+
       if (!isInitialRegionSet) {
         setIsInitialRegionSet(true);
         setPrevRegion(region);
       }
     },
-    [isInitialRegionSet]
+    [isInitialRegionSet, isWideView]
   );
 
   const renderHandle = useCallback(() => {
