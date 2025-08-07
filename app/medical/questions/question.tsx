@@ -1,4 +1,4 @@
-import { PET_OPTIONS } from '@/constants/pet';
+import { PET_OPTIONS, TREATMENT_OPTIONS } from '@/constants/pet';
 import { supabase } from '@/supabase/supabase';
 import { getTreatmentLabel } from '@/utils/formating';
 import { FontAwesome6, Ionicons } from '@expo/vector-icons';
@@ -7,17 +7,6 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
-const TREATMENT_OPTIONS = [
-    { label: '피부질환', value: 'skin', helpText: '발진, 두드러기, 습진, 탈모 등' },
-    { label: '설사', value: 'diarrhea', helpText: '묽은 변, 혈변, 지속적인 설사 등' },
-    { label: '배식 문제 / 구토', value: 'digestion', helpText: '식욕 부진, 구토, 소화불량 등' },
-    { label: '관절문제', value: 'joint', helpText: '절뚝거림, 관절 뻣뻣함, 통증 등' },
-    { label: '무기력', value: 'lethargy', helpText: '활동량 감소, 졸림, 에너지 부족 등' },
-    { label: '임신관련', value: 'pregnancy', helpText: '임신 징후, 출산 준비, 산후 관리 등' },
-    { label: '건강질문', value: 'health', helpText: '예방접종, 정기 검진, 영양 관리 등' },
-    { label: '기타', value: 'miscellaneous', helpText: '기타 건강 관련 질문' },
-];
 
 const FormSection = ({ activeField, control, setValue, getValues, errors, trigger }) => {
     const [isTitleFocused, setIsTitleFocused] = useState(false);
