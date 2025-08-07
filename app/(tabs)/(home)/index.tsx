@@ -1,4 +1,5 @@
 import DotPaginator from '@/components/DotPaginator';
+import SearchModal from '@/components/SearchModal'; // 새롭게 만든 SearchModal 컴포넌트를 가져옵니다.
 import { PET_OPTIONS } from '@/constants/pet';
 import { supabase } from '@/supabase/supabase';
 import { signOut } from '@/utils/auth';
@@ -107,6 +108,9 @@ export default function HomeScreen() {
   const [activePage, setActivePage] = useState(0);
   const flatListRef = useRef(null);
 
+  // 모달 상태를 관리하는 새로운 상태 변수입니다.
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+
   const { data: reports = [], isLoading, error } = useQuery({
     queryKey: ['reports'],
     queryFn: fetchReports,
@@ -156,7 +160,8 @@ export default function HomeScreen() {
             <Link href="/(tabs)/(home)/notifications" asChild>
               <FontAwesome5 name="bell" size={27} color="black" />
             </Link>
-            <Pressable onPress={() => console.log("search")} className="ml-4">
+            {/* 검색 버튼을 눌렀을 때 모달을 열도록 수정했습니다. */}
+            <Pressable onPress={() => setIsSearchModalVisible(true)} className="ml-4">
               <Ionicons name="search" size={28} color="black" />
             </Pressable>
           </View>
@@ -305,6 +310,11 @@ export default function HomeScreen() {
           </View>
         </View>
       </ScrollView>
+      {/* SearchModal 컴포넌트를 렌더링합니다. */}
+      <SearchModal
+        isVisible={isSearchModalVisible}
+        onClose={() => setIsSearchModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }
