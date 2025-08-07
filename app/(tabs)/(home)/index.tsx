@@ -153,9 +153,9 @@ export default function HomeScreen() {
             <Text className='font-semibold ml-2 text-lg'>중동 주변</Text>
           </View>
           <View className="flex-row justify-end items-center">
-            <Pressable onPress={() => console.log("bell")}>
+            <Link href="/(tabs)/(home)/notifications" asChild>
               <FontAwesome5 name="bell" size={27} color="black" />
-            </Pressable>
+            </Link>
             <Pressable onPress={() => console.log("search")} className="ml-4">
               <Ionicons name="search" size={28} color="black" />
             </Pressable>
