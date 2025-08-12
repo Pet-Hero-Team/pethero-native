@@ -1,10 +1,11 @@
-
 import CallModal from '@/components/CallModal';
+import DeletePostModal from '@/components/DeletePostModal';
 import MapModal from '@/components/MapModal';
+import { useAuth } from '@/hooks/useAuth';
 import { Database } from '@/supabase/database.types';
 import { supabase } from '@/supabase/supabase';
-import { Fontisto, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { Fontisto, Ionicons } from '@expo/vector-icons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import React, { useRef, useState } from 'react';
@@ -40,6 +41,7 @@ const fetchReport = async (id: string): Promise<Report | null> => {
         .from('reports')
         .select(`
             id,
+            user_id,
             title,
             description,
             address,
@@ -93,6 +95,7 @@ const fetchRelatedReports = async (currentId: string): Promise<RelatedReport[]> 
 
 export default function RescuesDetailScreen() {
     const { id } = useLocalSearchParams();
+    const { user } = useAuth();
     const [activeIndex, setActiveIndex] = useState(0);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -102,9 +105,12 @@ export default function RescuesDetailScreen() {
     const CARD_WIDTH = width * 0.8;
     const IMAGE_WIDTH = width;
 
+    // 모달 상태 관리
     const [isMapModalVisible, setMapModalVisible] = useState(false);
     const [isCallModalVisible, setCallModalVisible] = useState(false);
-    const [generatedPhoneNumber, setGeneratedPhoneNumber] = useState('');
+    const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
+
+    const queryClient = useQueryClient();
 
     const { data: report, isLoading, error } = useQuery({
         queryKey: ['report', id],
@@ -116,7 +122,43 @@ export default function RescuesDetailScreen() {
         queryFn: () => fetchRelatedReports(id as string),
     });
 
-    // [FIX#1] 모달 상태 관리 로직 수정: 하나의 모달을 열 때 다른 모달은 닫히도록 하여 충돌 및 중복 클릭 문제 해결
+    const isOwner = report?.user_id === user?.id;
+
+    const deleteMutation = useMutation({
+        mutationFn: async () => {
+            // 1. reports_images 테이블에서 해당 게시글 ID를 가진 이미지들을 먼저 삭제합니다.
+            const { error: imagesError } = await supabase
+                .from('reports_images')
+                .delete()
+                .eq('report_id', id as string);
+
+            if (imagesError) {
+                console.error('이미지 삭제 실패:', imagesError);
+                throw new Error(imagesError.message);
+            }
+
+            // 2. 이미지 삭제가 성공하면, reports 테이블에서 게시글을 삭제합니다.
+            const { error: reportError } = await supabase
+                .from('reports')
+                .delete()
+                .eq('id', id as string);
+
+            if (reportError) {
+                console.error('게시글 삭제 실패:', reportError);
+                throw new Error(reportError.message);
+            }
+        },
+        onSuccess: () => {
+            Toast.show({ type: 'success', text1: '삭제 성공', text2: '게시글이 성공적으로 삭제되었습니다.' });
+            queryClient.invalidateQueries({ queryKey: ['reports'] }); // reports 목록 갱신
+            router.back();
+        },
+        onError: (e: Error) => {
+            Toast.show({ type: 'error', text1: '삭제 실패', text2: `오류가 발생했습니다: ${e.message}` });
+        },
+    });
+
+    // 핸들러 함수들
     const handleLocationPress = () => {
         setCallModalVisible(false);
         setMapModalVisible(true);
@@ -124,8 +166,6 @@ export default function RescuesDetailScreen() {
 
     const handleCallPress = () => {
         const phone = `010-${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 9000 + 1000)}`;
-        setGeneratedPhoneNumber(phone);
-        setMapModalVisible(false);
         setCallModalVisible(true);
     };
 
@@ -159,6 +199,23 @@ export default function RescuesDetailScreen() {
                 text1: '공유 중 오류가 발생했습니다.',
             });
         }
+    };
+
+    const handleEditPress = () => {
+        // EditReportScreen으로 이동하도록 변경
+        router.push({
+            pathname: '/map/reports/edit', // 파일 구조에 맞는 경로
+            params: { id: id as string },
+        });
+    };
+
+    const handleDeletePress = () => {
+        setDeleteModalVisible(true);
+    };
+
+    const handleConfirmDelete = () => {
+        setDeleteModalVisible(false);
+        deleteMutation.mutate();
     };
 
     const handleScroll = (event: any) => {
@@ -234,6 +291,18 @@ export default function RescuesDetailScreen() {
                 </View>
                 <View className="px-6">
                     <View className="pt-8">
+                        {isOwner && (
+                            <View className="flex-row justify-end">
+                                <Pressable onPress={handleEditPress} className="flex-row items-center p-2 rounded-md bg-neutral-100 mr-2">
+                                    <Ionicons name="create-outline" size={15} color="#525252" />
+                                    <Text className="text-neutral-600 text-sm font-bold ml-1">수정</Text>
+                                </Pressable>
+                                <Pressable onPress={handleDeletePress} className="flex-row items-center p-2 rounded-md bg-red-500">
+                                    <Ionicons name="trash-outline" size={14} color="white" />
+                                    <Text className="text-white text-sm ml-1">삭제</Text>
+                                </Pressable>
+                            </View>
+                        )}
                         <View className="flex-row items-center">
                             <Fontisto name="map-marker-alt" size={14} color="#262626" />
                             <Text className="text text-neutral-800 ml-2 font-bold">{report.address}</Text>
@@ -266,9 +335,10 @@ export default function RescuesDetailScreen() {
                             <Text className="text-xs text-gray-500 mt-2">공유</Text>
                         </Pressable>
                     </View>
+
                 </View>
                 <View className="px-6 mt-8 pb-36">
-                    <Text className="text-xl font-bold text-neutral-800">관련 제보</Text>
+                    <Text className="text-xl font-bold text-neutral-800 mb-4">관련 제보</Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -318,6 +388,7 @@ export default function RescuesDetailScreen() {
                     </View>
                 </View>
             </ScrollView>
+
             <ImageViewer
                 images={images}
                 imageIndex={activeImageIndex}
@@ -351,15 +422,17 @@ export default function RescuesDetailScreen() {
             />
             <CallModal
                 isVisible={isCallModalVisible}
+                phoneNumber='050-1234-5678'
                 onClose={() => setCallModalVisible(false)}
-                phoneNumber={generatedPhoneNumber}
             />
-            <View className="absolute bottom-10 flex items-center w-full">
-                <View className="bg-orange-500 py-4 px-8 rounded-xl flex-row items-center justify-center">
-                    <MaterialIcons name="message" size={24} color="white" />
-                    <Text className="text-white text-lg font-bold ml-2">제보자와 대화하기</Text>
-                </View>
-            </View>
+
+            {isOwner && report && (
+                <DeletePostModal
+                    isVisible={isDeleteModalVisible}
+                    onClose={() => setDeleteModalVisible(false)}
+                    onConfirmDelete={handleConfirmDelete}
+                />
+            )}
         </>
     );
 }

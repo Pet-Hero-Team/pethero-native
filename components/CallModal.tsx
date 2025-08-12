@@ -42,8 +42,8 @@ export default function CallModal({ isVisible, onClose, phoneNumber }: CallModal
                 <Text className="text-xl text-neutral-800 font-bold mb-3">전화번호</Text>
                 <Text className="text-3xl text-orange-500 font-bold mb-4">{phoneNumber}</Text>
                 <View className='flex-row items-center pb-8'>
-                    <AntDesign name="infocirlceo" size={12} color="#a3a3a3" />
-                    <Text className='text-neutral-400 text-sm ml-1'>
+                    <AntDesign name="infocirlceo" size={12} color="#737373" />
+                    <Text className='text-neutral-500 text-sm ml-1'>
                         이 번호는 일회성번호로 안심하고 전화하셔도 됩니다.
                     </Text>
                 </View>

@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -18,31 +17,42 @@ interface ModalContainerProps {
 
 export default function ModalContainer({ isVisible, onClose, children }: ModalContainerProps) {
     const animatedTranslateY = useSharedValue(0);
+    const closeThreshold = 100;
 
-    // 모달이 닫힐 때 애니메이션 값 초기화
+
     useEffect(() => {
         if (!isVisible) {
             const timer = setTimeout(() => {
                 animatedTranslateY.value = 0;
-            }, 300); // animationOutTiming과 동일하게 설정
+            }, 300);
             return () => clearTimeout(timer);
         }
     }, [isVisible, animatedTranslateY]);
 
     const panGesture = Gesture.Pan()
         .onUpdate((event) => {
-            // 아래로 드래그할 때만 반응
+
             if (event.translationY > 0) {
                 animatedTranslateY.value = event.translationY;
             }
+
+            else {
+
+                animatedTranslateY.value = event.translationY / 6;
+            }
         })
         .onEnd((event) => {
-            const closeThreshold = 100;
+
             if (event.translationY > closeThreshold) {
                 runOnJS(onClose)();
             } else {
-                // 원래 위치로 복귀
-                animatedTranslateY.value = withSpring(0, { damping: 15, stiffness: 120 });
+
+                animatedTranslateY.value = withSpring(0, {
+                    damping: 15,
+                    stiffness: 120,
+                    restDisplacementThreshold: 0.1,
+                    restSpeedThreshold: 0.1,
+                });
             }
         });
 
@@ -80,10 +90,5 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
         marginHorizontal: 24,
         marginBottom: 30,
-    },
-    contentContainer: {
-        backgroundColor: 'white',
-        borderRadius: 24,
-        overflow: 'hidden',
     },
 });
