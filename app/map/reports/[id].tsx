@@ -1,11 +1,24 @@
+
+import CallModal from '@/components/CallModal';
+import MapModal from '@/components/MapModal';
 import { Database } from '@/supabase/database.types';
 import { supabase } from '@/supabase/supabase';
 import { Fontisto, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import * as Sharing from 'expo-sharing';
+import React, { useRef, useState } from 'react';
+import {
+    Image,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    useWindowDimensions,
+    View,
+} from 'react-native';
 import ImageViewer from 'react-native-image-viewing';
+import Toast from 'react-native-toast-message';
 
 type Report = Database['public']['Tables']['reports']['Row'] & {
     reports_images: Database['public']['Tables']['reports_images']['Row'][];
@@ -21,22 +34,22 @@ type RelatedReport = {
     longitude: number;
 };
 
+// 제보 상세 정보 불러오기
 const fetchReport = async (id: string): Promise<Report | null> => {
-    console.log('Fetching report with ID:', id);
     const { data, error } = await supabase
         .from('reports')
         .select(`
-      id,
-      title,
-      description,
-      address,
-      latitude,
-      longitude,
-      created_at,
-      animal_type,
-      sighting_type,
-      reports_images (url)
-    `)
+            id,
+            title,
+            description,
+            address,
+            latitude,
+            longitude,
+            created_at,
+            animal_type,
+            sighting_type,
+            reports_images (url)
+        `)
         .eq('id', id)
         .maybeSingle();
 
@@ -44,22 +57,21 @@ const fetchReport = async (id: string): Promise<Report | null> => {
         console.error('Report fetch error:', error);
         throw new Error(`제보 조회 실패: ${error.message}`);
     }
-
-    console.log('Query result:', JSON.stringify(data));
     return data;
 };
 
+// 관련 제보 목록 불러오기
 const fetchRelatedReports = async (currentId: string): Promise<RelatedReport[]> => {
     const { data, error } = await supabase
         .from('reports')
         .select(`
-      id,
-      title,
-      address,
-      latitude,
-      longitude,
-      reports_images (url)
-    `)
+            id,
+            title,
+            address,
+            latitude,
+            longitude,
+            reports_images (url)
+        `)
         .neq('id', currentId)
         .limit(5);
 
@@ -83,12 +95,16 @@ export default function RescuesDetailScreen() {
     const { id } = useLocalSearchParams();
     const [activeIndex, setActiveIndex] = useState(0);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
-    const [modalVisible, setModalVisible] = useState(false);
+    const [imageViewerVisible, setImageViewerVisible] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
     const imageScrollViewRef = useRef<ScrollView>(null);
     const { width } = useWindowDimensions();
     const CARD_WIDTH = width * 0.8;
     const IMAGE_WIDTH = width;
+
+    const [isMapModalVisible, setMapModalVisible] = useState(false);
+    const [isCallModalVisible, setCallModalVisible] = useState(false);
+    const [generatedPhoneNumber, setGeneratedPhoneNumber] = useState('');
 
     const { data: report, isLoading, error } = useQuery({
         queryKey: ['report', id],
@@ -100,11 +116,55 @@ export default function RescuesDetailScreen() {
         queryFn: () => fetchRelatedReports(id as string),
     });
 
+    // [FIX#1] 모달 상태 관리 로직 수정: 하나의 모달을 열 때 다른 모달은 닫히도록 하여 충돌 및 중복 클릭 문제 해결
+    const handleLocationPress = () => {
+        setCallModalVisible(false);
+        setMapModalVisible(true);
+    };
+
+    const handleCallPress = () => {
+        const phone = `010-${Math.floor(Math.random() * 9000 + 1000)}-${Math.floor(Math.random() * 9000 + 1000)}`;
+        setGeneratedPhoneNumber(phone);
+        setMapModalVisible(false);
+        setCallModalVisible(true);
+    };
+
+    const handleSharePress = async () => {
+        if (Platform.OS === 'web') {
+            Toast.show({
+                type: 'info',
+                text1: '웹 환경에서는 공유 기능을 지원하지 않습니다.',
+            });
+            return;
+        }
+
+        try {
+            if (await Sharing.isAvailableAsync()) {
+                const shareContent = {
+                    message: `[실종동물 제보] ${report?.title || '제보'}를 공유합니다.`,
+                    url: `https://your-app-url.com/reports/${id}`,
+                    title: report?.title || '실종동물 제보',
+                };
+                await Sharing.shareAsync(shareContent.url, shareContent);
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: '공유 기능을 사용할 수 없습니다.',
+                });
+            }
+        } catch (e) {
+            console.error('Sharing failed:', e);
+            Toast.show({
+                type: 'error',
+                text1: '공유 중 오류가 발생했습니다.',
+            });
+        }
+    };
+
     const handleScroll = (event: any) => {
         const contentOffsetX = event.nativeEvent.contentOffset.x;
         const index = Math.round(contentOffsetX / CARD_WIDTH);
         setActiveIndex(index);
-        console.log('Scroll offset:', contentOffsetX, 'Active index:', index);
     };
 
     const handleImageScroll = (event: any) => {
@@ -113,9 +173,9 @@ export default function RescuesDetailScreen() {
         setActiveImageIndex(index);
     };
 
-    const openModal = (index: number) => {
+    const openImageViewer = (index: number) => {
         setActiveImageIndex(index);
-        setModalVisible(true);
+        setImageViewerVisible(true);
     };
 
     if (isLoading) {
@@ -148,7 +208,7 @@ export default function RescuesDetailScreen() {
                         scrollEventThrottle={16}
                     >
                         {images.map((image, index) => (
-                            <Pressable key={index} onPress={() => openModal(index)}>
+                            <Pressable key={index} onPress={() => openImageViewer(index)}>
                                 <Image
                                     source={{ uri: image.uri }}
                                     className="h-[32rem] w-full"
@@ -167,8 +227,7 @@ export default function RescuesDetailScreen() {
                         {images.map((_, index) => (
                             <View
                                 key={index}
-                                className={`h-2 w-2 mx-1 rounded-full ${activeImageIndex === index ? 'bg-white' : 'bg-white/50'
-                                    }`}
+                                className={`h-2 w-2 mx-1 rounded-full ${activeImageIndex === index ? 'bg-white' : 'bg-white/50'}`}
                             />
                         ))}
                     </View>
@@ -183,33 +242,33 @@ export default function RescuesDetailScreen() {
                             {report.title}
                         </Text>
                     </View>
-
                     <View className="mt-4 border-b border-neutral-200 pb-8">
                         <Text className="text-neutral-700 leading-8">{report.description || '설명 없음'}</Text>
                     </View>
                     <View className="flex-row justify-between mt-8 bg-white">
                         <View className="items-center w-1/4">
                             <Ionicons name="bookmark-outline" size={26} color="#888" />
-                            <Text className="text-xs text-gray-500 mt-2">{report.like_count || 0}</Text>
+                            <Text className="text-xs text-gray-500 mt-2">북마크</Text>
                         </View>
                         <View className="h-8 border-l border-gray-200" />
-                        <View className="items-center w-1/4">
+                        <Pressable className="items-center w-1/4" onPress={handleLocationPress}>
                             <Ionicons name="location-outline" size={26} color="#888" />
                             <Text className="text-xs text-gray-500 mt-2">위치</Text>
-                        </View>
+                        </Pressable>
                         <View className="h-8 border-l border-gray-200" />
-                        <View className="items-center w-1/4">
+                        <Pressable className="items-center w-1/4" onPress={handleCallPress}>
                             <Ionicons name="call-outline" size={26} color="#888" />
                             <Text className="text-xs text-gray-500 mt-2">전화</Text>
-                        </View>
+                        </Pressable>
                         <View className="h-8 border-l border-gray-200" />
-                        <View className="items-center w-1/4">
+                        <Pressable className="items-center w-1/4" onPress={handleSharePress}>
                             <Ionicons name="share-social-outline" size={26} color="#888" />
                             <Text className="text-xs text-gray-500 mt-2">공유</Text>
-                        </View>
+                        </Pressable>
                     </View>
                 </View>
                 <View className="px-6 mt-8 pb-36">
+                    <Text className="text-xl font-bold text-neutral-800">관련 제보</Text>
                     <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -222,7 +281,7 @@ export default function RescuesDetailScreen() {
                         contentInset={{ right: width * 0.2 }}
                         contentOffset={{ x: 0, y: 0 }}
                     >
-                        {(relatedReports || []).map((item, idx) => (
+                        {(relatedReports || []).map((item) => (
                             <Pressable
                                 key={item.id}
                                 onPress={() => router.push(`/map/rescues/${item.id}`)}
@@ -253,19 +312,17 @@ export default function RescuesDetailScreen() {
                         {(relatedReports || []).map((_, index) => (
                             <View
                                 key={index}
-                                className={`h-2 w-2 mx-1 rounded-full ${activeIndex === index ? 'bg-neutral-800' : 'bg-neutral-300'
-                                    }`}
+                                className={`h-2 w-2 mx-1 rounded-full ${activeIndex === index ? 'bg-neutral-800' : 'bg-neutral-300'}`}
                             />
                         ))}
                     </View>
                 </View>
             </ScrollView>
-
             <ImageViewer
                 images={images}
                 imageIndex={activeImageIndex}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
+                visible={imageViewerVisible}
+                onRequestClose={() => setImageViewerVisible(false)}
                 backgroundColor="rgba(0, 0, 0, 0.8)"
                 doubleTapToZoom
                 swipeToCloseEnabled
@@ -274,21 +331,29 @@ export default function RescuesDetailScreen() {
                         {images.map((_, index) => (
                             <View
                                 key={index}
-                                className={`h-2 w-2 mx-1 rounded-full ${imageIndex === index ? 'bg-white' : 'bg-white/50'
-                                    }`}
+                                className={`h-2 w-2 mx-1 rounded-full ${imageIndex === index ? 'bg-white' : 'bg-white/50'}`}
                             />
                         ))}
                     </View>
                 )}
                 HeaderComponent={() => (
                     <View className="flex-row justify-end pt-16 pr-4">
-                        <Pressable onPress={() => setModalVisible(false)} className="p-2 bg-white/40 rounded-full">
+                        <Pressable onPress={() => setImageViewerVisible(false)} className="p-2 bg-white/40 rounded-full">
                             <Ionicons name="close" size={28} color="#222" />
                         </Pressable>
                     </View>
                 )}
             />
-
+            <MapModal
+                isVisible={isMapModalVisible}
+                onClose={() => setMapModalVisible(false)}
+                reportLocation={report}
+            />
+            <CallModal
+                isVisible={isCallModalVisible}
+                onClose={() => setCallModalVisible(false)}
+                phoneNumber={generatedPhoneNumber}
+            />
             <View className="absolute bottom-10 flex items-center w-full">
                 <View className="bg-orange-500 py-4 px-8 rounded-xl flex-row items-center justify-center">
                     <MaterialIcons name="message" size={24} color="white" />
