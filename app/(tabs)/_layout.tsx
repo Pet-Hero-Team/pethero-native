@@ -13,8 +13,8 @@ export default function TabLayout() {
         tabBarShowLabel: false,
         tabBarStyle: {
           borderTopColor: '#ffffff',
-          height: 75,
-          paddingTop: 10,
+          height: 80,
+          paddingTop: 13,
           shadowColor: '#939393',
           shadowOffset: { width: 0, height: -5 },
           shadowOpacity: 0.09,
