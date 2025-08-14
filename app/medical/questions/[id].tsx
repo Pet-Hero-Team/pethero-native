@@ -79,6 +79,7 @@ export default function QuestionsDetailScreen() {
         enabled: !!question && !!id,
     });
 
+
     useEffect(() => {
         const fetchQuestion = async () => {
             if (!user) {
@@ -98,20 +99,19 @@ export default function QuestionsDetailScreen() {
                 const { data, error } = await supabase
                     .from('pet_questions')
                     .select(`
-            id,
-            user_id,
-            title,
-            description,
-            animal_type,
-            created_at,
-            pet_question_images (url),
-            pet_question_disease_tags (
-              disease_tags (tag_name)
-            )
-          `)
+                    id,
+                    user_id,
+                    title,
+                    description,
+                    animal_type,
+                    created_at,
+                    pet_question_images (url),
+                    pet_question_disease_tags (
+                        disease_tags (tag_name)
+                    )
+                `)
                     .eq('id', id)
-                    .eq('user_id', user.id)
-                    .single();
+                    .single(); // ✅ user_id 조건 제거
 
                 if (error || !data) {
                     console.error(`Question fetch error: ${JSON.stringify(error)}`);
