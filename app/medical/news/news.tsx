@@ -1,98 +1,167 @@
-import { ShadowView } from '@/components/ShadowView';
-import { Entypo, FontAwesome5, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { supabase } from '@/supabase/supabase';
+import { formatTimeAgo } from '@/utils/formating';
+import { Ionicons } from '@expo/vector-icons';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { Link, router } from 'expo-router';
+import React, { useCallback, useRef } from 'react';
+import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
+
+const PAGE_SIZE = 10;
+
+const fetchNews = async ({ pageParam = 0 }) => {
+    const from = pageParam * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+        .from('pet_news')
+        .select('id, title, created_at, type, main_image_url')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+    if (error) {
+        console.error('뉴스 데이터 조회 실패:', error);
+        throw new Error('뉴스 데이터 조회에 실패했습니다.');
+    }
+
+    return {
+        data,
+        nextPage: data.length === PAGE_SIZE ? pageParam + 1 : undefined,
+    };
+};
+
+const NewsItem = ({ item }) => (
+    <Link href={`/medical/news/${item.id}`} key={item.id} asChild>
+        <Pressable className='w-full'>
+            <View className="flex-row items-center justify-between py-6 px-6 border-b border-neutral-100">
+                <View className="flex-1 pr-6">
+                    <View className="bg-neutral-100 py-1 px-2 rounded-lg self-start mb-2">
+                        <Text className="text-xs font-semibold text-neutral-600">{item.type}</Text>
+                    </View>
+                    <Text className="text-neutral-700 font-bold text-lg mb-1 leading-6" numberOfLines={2}>
+                        {item.title}
+                    </Text>
+                    <Text className="text-neutral-500 text-sm">
+                        {formatTimeAgo(item.created_at)}
+                    </Text>
+                </View>
+                {item.main_image_url && (
+                    <Image
+                        source={{ uri: item.main_image_url }}
+                        className="size-24 rounded-lg"
+                        resizeMode="cover"
+                    />
+                )}
+            </View>
+        </Pressable>
+    </Link>
+);
+
+const NewsListSkeleton = () => {
+    return (
+        <SkeletonPlaceholder
+            backgroundColor="#e5e7eb"
+            highlightColor="#f3f4f6"
+            speed={1000}
+        >
+            {Array.from({ length: 5 }).map((_, index) => (
+                <View key={index} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 24, paddingHorizontal: 24, borderBottomWidth: 1, borderColor: '#f3f4f6' }}>
+                    <View style={{ flex: 1, marginRight: 24 }}>
+                        <View style={{ width: 60, height: 20, borderRadius: 8, marginBottom: 8 }} />
+                        <View style={{ width: '100%', height: 20, borderRadius: 4, marginBottom: 8 }} />
+                        <View style={{ width: '60%', height: 12, borderRadius: 4 }} />
+                    </View>
+                    <View style={{ width: 96, height: 96, borderRadius: 8 }} />
+                </View>
+            ))}
+        </SkeletonPlaceholder>
+    );
+};
 
 export default function NewsScreen() {
-    const [viewType, setViewType] = useState<'grid' | 'list'>('grid');
+    const scrollViewRef = useRef<ScrollView>(null);
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        error
+    } = useInfiniteQuery({
+        queryKey: ['newsInfinite'],
+        queryFn: fetchNews,
+        getNextPageParam: (lastPage) => lastPage.nextPage,
+    });
 
-    return (
-        <SafeAreaView className="flex-1 bg-neutral-50">
-            <ScrollView>
-                <View className="px-6 pt-3">
-                    <View className="flex-row items-center justify-between">
-                        <Pressable onPress={() => router.back()} hitSlop={12}>
+    const news = data?.pages.flatMap(page => page.data) || [];
+
+    const handleScroll = useCallback(() => {
+        if (!isFetchingNextPage && hasNextPage) {
+            fetchNextPage();
+        }
+    }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
+
+    const handleMomentumScrollEnd = useCallback((event) => {
+        const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+        const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 50;
+        if (isCloseToBottom) {
+            handleScroll();
+        }
+    }, [handleScroll]);
+
+    if (isLoading) {
+        return (
+            <SafeAreaView className="flex-1 bg-white">
+                <View className="px-6 bg-white">
+                    <View className="flex-row items-center justify-center relative">
+                        <Pressable onPress={() => router.back()} hitSlop={12} className="absolute left-0">
                             <Ionicons name="chevron-back" size={28} color="#222" />
                         </Pressable>
-                    </View>
-                    <Text className="text-4xl font-extrabold text-neutral-900 mt-8">News</Text>
-                    <View className="flex-row items-center justify-between mt-2">
-                        <View className="flex-row items-center">
-                            <Text className="text-neutral-700 font-semibold text-base">최신순</Text>
-                            <Entypo name="chevron-small-down" size={22} color="#444" />
-                        </View>
-                        <View className="flex-row bg-neutral-100 rounded-full p-1">
-                            <Pressable
-                                onPress={() => setViewType('grid')}
-                                className={viewType === 'grid'
-                                    ? "bg-white rounded-full px-3 py-2 mr-1 flex-row items-center"
-                                    : "rounded-full px-3 py-2 mr-1 flex-row items-center"}
-                                accessibilityRole="button"
-                                accessibilityLabel="그리드 보기"
-                            >
-                                <MaterialCommunityIcons
-                                    name="view-grid"
-                                    size={18}
-                                    color={viewType === 'grid' ? "#222" : "#bbb"}
-                                />
-                            </Pressable>
-                            <Pressable
-                                onPress={() => setViewType('list')}
-                                className={viewType === 'list'
-                                    ? "bg-white rounded-full px-3 py-2 flex-row items-center"
-                                    : "rounded-full px-3 py-2 flex-row items-center"}
-                                accessibilityRole="button"
-                                accessibilityLabel="리스트 보기"
-                            >
-                                <FontAwesome5
-                                    name="columns"
-                                    size={18}
-                                    color={viewType === 'list' ? "#222" : "#bbb"}
-                                />
-                            </Pressable>
-                        </View>
+                        <Text className="text-xl font-extrabold text-neutral-900 mt-8 mb-6 text-center">애완 소식지</Text>
                     </View>
                 </View>
+                <NewsListSkeleton />
+            </SafeAreaView>
+        );
+    }
 
-                <View className="px-4 mb-6 mt-6">
-                    <ShadowView className="bg-white rounded-3xl">
-                        <View className="overflow-hidden rounded-3xl">
-                            <Image
-                                source={{ uri: 'https://picsum.photos/500/500' }}
-                                className="w-full h-96"
-                                resizeMode="cover"
-                            />
-                            <View className="p-5">
-                                <Text className="text-teal-600 font-semibold mb-1">고양이</Text>
-                                <Text className="text-neutral-900 font-extrabold text-2xl mb-2">고양이는 왜 꾹꾹이를 할까?</Text>
-                                <Text className="text-neutral-500 text-base leading-6"
-                                    numberOfLines={2}
-                                    ellipsizeMode="tail">
-                                    고양이가 앞발로 꾹꾹이를 하는 행동은 어릴 때 어미 젖을 먹던 습관에서 비롯된 것으로, 편안함과 애정의 표현입니다. 스트레스를 해소하거나, 자신의 영역임을 표시할 때도 보입니다.
-                                </Text>
-                            </View>
-                        </View>
-                    </ShadowView>
-                    <ShadowView className="bg-white rounded-3xl mt-8">
-                        <View className="overflow-hidden rounded-3xl">
-                            <Image
-                                source={{ uri: 'https://picsum.photos/500/500' }}
-                                className="w-full h-96"
-                                resizeMode="cover"
-                            />
-                            <View className="p-5">
-                                <Text className="text-teal-600 font-semibold mb-1">강아지</Text>
-                                <Text className="text-neutral-900 font-extrabold text-2xl mb-2">강아지 석고현상을 아시나요?</Text>
-                                <Text className="text-neutral-500 text-base leading-6"
-                                    numberOfLines={2}
-                                    ellipsizeMode="tail">
-                                    강아지 석고현상은 갑작스러운 놀람이나 불안으로 인해 몸이 순간적으로 굳는 현상입니다. 이는 일시적인 반응으로, 대부분 금방 정상으로 돌아오지만 반복된다면 환경을 점검해 주세요.
-                                </Text>
-                            </View>
-                        </View>
-                    </ShadowView>
+    if (error) {
+        return (
+            <SafeAreaView className="flex-1 bg-white justify-center items-center">
+                <Text className="text-lg font-semibold text-red-500">오류: {(error as Error).message}</Text>
+            </SafeAreaView>
+        );
+    }
+
+    return (
+        <SafeAreaView className="flex-1 bg-white">
+            <View className="px-6 bg-white">
+                <View className="flex-row items-center justify-center relative">
+                    <Pressable onPress={() => router.back()} hitSlop={12} className="absolute left-0">
+                        <Ionicons name="chevron-back" size={28} color="#222" />
+                    </Pressable>
+                    <Text className="text-xl font-extrabold text-neutral-900 mt-8 mb-6 text-center">애완 소식지</Text>
                 </View>
+            </View>
+            <ScrollView
+                ref={scrollViewRef}
+                className="flex-1 bg-white"
+                onMomentumScrollEnd={handleMomentumScrollEnd}
+            >
+                {news.length === 0 ? (
+                    <View className="flex-1 justify-center items-center py-20">
+                        <Text className="text-lg font-semibold text-gray-800">소식이 없습니다.</Text>
+                    </View>
+                ) : (
+                    news.map((item) => (
+                        <NewsItem item={item} key={item.id} />
+                    ))
+                )}
+                {isFetchingNextPage && (
+                    <View className="py-8">
+                        <ActivityIndicator size="large" color="#0d9488" />
+                    </View>
+                )}
             </ScrollView>
         </SafeAreaView>
     );
