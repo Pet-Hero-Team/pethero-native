@@ -1,4 +1,3 @@
-
 import { FontAwesome6 } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -13,10 +12,10 @@ export default function TabLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          borderTopColor: "#ffffff",
+          borderTopColor: '#ffffff',
           height: 75,
           paddingTop: 10,
-          shadowColor: "#939393",
+          shadowColor: '#939393',
           shadowOffset: { width: 0, height: -5 },
           shadowOpacity: 0.09,
           shadowRadius: 5,
@@ -27,10 +26,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(home)"
         options={{
-          tabBarIcon: () => (
+          tabBarIcon: ({ focused }) => (
             <>
-              <FontAwesome name="home" size={24} color="#404040" />
-              <Text className="text-neutral-700 mt-2 text-xs">홈</Text>
+              <FontAwesome name="home" size={24} color={focused ? '#404040' : '#a3a3a3'} />
+              <Text className={`mt-2 text-xs ${focused ? 'text-neutral-700' : 'text-neutral-400'}`}>홈</Text>
             </>
           ),
         }}
@@ -38,10 +37,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(medical)"
         options={{
-          tabBarIcon: () => (
+          tabBarIcon: ({ focused }) => (
             <>
-              <FontAwesome6 name="briefcase-medical" size={20} color="#404040" />
-              <Text className="text-neutral-700 mt-2 text-xs">의료</Text>
+              <FontAwesome6 name="briefcase-medical" size={20} color={focused ? '#404040' : '#a3a3a3'} />
+              <Text className={`mt-2 text-xs ${focused ? 'text-neutral-700' : 'text-neutral-400'}`}>의료</Text>
             </>
           ),
         }}
@@ -49,10 +48,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(maps)"
         options={{
-          tabBarIcon: () => (
+          tabBarIcon: ({ focused }) => (
             <>
-              <FontAwesome5 name="map-marker-alt" size={21} color="#404040" />
-              <Text className="text-neutral-700 mt-2 text-xs">지도</Text>
+              <FontAwesome5 name="map-marker-alt" size={21} color={focused ? '#404040' : '#a3a3a3'} />
+              <Text className={`mt-2 text-xs ${focused ? 'text-neutral-700' : 'text-neutral-400'}`}>지도</Text>
             </>
           ),
         }}
@@ -60,15 +59,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(chats)"
         options={{
-          tabBarIcon: () => (
+          tabBarIcon: ({ focused }) => (
             <>
-              <Ionicons name="chatbox-ellipses" size={21} color="#404040" />
-              <Text className="text-neutral-700 mt-2 text-xs">채팅</Text>
+              <Ionicons name="chatbox-ellipses" size={21} color={focused ? '#404040' : '#a3a3a3'} />
+              <Text className={`mt-2 text-xs ${focused ? 'text-neutral-700' : 'text-neutral-400'}`}>채팅</Text>
             </>
           ),
         }}
       />
-
     </Tabs>
   );
 }
