@@ -3,7 +3,7 @@ import { AnswerSkeleton, QuestionDetailSkeleton, RelatedQuestionSkeleton } from 
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import { formatTimeAgo, getAnimalTypeLabel, getTreatmentLabel } from '@/utils/formating';
-import { Ionicons } from '@expo/vector-icons';
+import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -32,26 +32,31 @@ interface RelatedQuestion {
 }
 
 const fetchRelatedQuestions = async (diseaseTag: string, currentQuestionId: string) => {
+    // 내부 조인(`!inner`)을 사용하여 지정된 태그를 가진 질문만 정확하게 필터링합니다.
     const { data, error } = await supabase
         .from('pet_questions')
         .select(`
-      id,
-      title,
-      description,
-      animal_type,
-      created_at,
-      pet_question_images (url),
-      pet_question_disease_tags (
-        disease_tags (tag_name)
-      )
-    `)
+            id,
+            title,
+            description,
+            animal_type,
+            created_at,
+            pet_question_images (url),
+            pet_question_disease_tags!inner (
+                disease_tags!inner (tag_name)
+            )
+        `)
         .eq('pet_question_disease_tags.disease_tags.tag_name', diseaseTag)
         .neq('id', currentQuestionId)
         .order('created_at', { ascending: false })
-        .limit(4);
+        .limit(5);
 
-    if (error) throw new Error(`유사 질문 조회 실패: ${error.message}`);
+    if (error) {
+        console.error("유사 질문 조회 실패:", error.message);
+        throw new Error(`유사 질문 조회 실패: ${error.message}`);
+    }
 
+    // 쿼리 결과가 올바른 태그를 포함하도록 매핑합니다.
     return data.map((question: any) => ({
         id: question.id,
         title: question.title,
@@ -62,10 +67,6 @@ const fetchRelatedQuestions = async (diseaseTag: string, currentQuestionId: stri
         disease_tag: getTreatmentLabel(question.pet_question_disease_tags?.[0]?.disease_tags?.tag_name || '미지정'),
     }));
 };
-
-
-
-
 
 export default function QuestionsDetailScreen() {
     const { user } = useAuth();
@@ -78,7 +79,6 @@ export default function QuestionsDetailScreen() {
         queryFn: () => fetchRelatedQuestions(question?.disease_tag.tag_name || '미지정', id as string),
         enabled: !!question && !!id,
     });
-
 
     useEffect(() => {
         const fetchQuestion = async () => {
@@ -99,19 +99,19 @@ export default function QuestionsDetailScreen() {
                 const { data, error } = await supabase
                     .from('pet_questions')
                     .select(`
-                    id,
-                    user_id,
-                    title,
-                    description,
-                    animal_type,
-                    created_at,
-                    pet_question_images (url),
-                    pet_question_disease_tags (
-                        disease_tags (tag_name)
-                    )
-                `)
+                        id,
+                        user_id,
+                        title,
+                        description,
+                        animal_type,
+                        created_at,
+                        pet_question_images (url),
+                        pet_question_disease_tags (
+                            disease_tags (tag_name)
+                        )
+                    `)
                     .eq('id', id)
-                    .single(); // ✅ user_id 조건 제거
+                    .single();
 
                 if (error || !data) {
                     console.error(`Question fetch error: ${JSON.stringify(error)}`);
@@ -131,7 +131,6 @@ export default function QuestionsDetailScreen() {
                     disease_tag: data.pet_question_disease_tags?.[0]?.disease_tags || { tag_name: '미지정' },
                 };
                 setQuestion(formattedQuestion);
-                console.log('Raw data:', JSON.stringify(data.pet_question_disease_tags));
             } catch (error) {
                 console.error('Error fetching question:', error);
                 Toast.show({
@@ -183,6 +182,8 @@ export default function QuestionsDetailScreen() {
             </SafeAreaView>
         );
     }
+
+    const seeMoreButtonText = `${getTreatmentLabel(question.disease_tag.tag_name)} 관련 더보기`;
 
     return (
         <SafeAreaView className="flex-1 bg-white">
@@ -302,26 +303,47 @@ export default function QuestionsDetailScreen() {
                             ))}
                         </View>
                     ) : relatedQuestions.length === 0 ? (
-                        <Text className="text-neutral-600 text-center">유사 질문이 없습니다.</Text>
+                        <View className="flex-1 justify-center items-center py-20">
+                            <Text className="text-neutral-600 text-center">유사 질문이 없습니다.</Text>
+                        </View>
                     ) : (
                         relatedQuestions.map((item) => (
-                            <Link href={`/medical/questions/${item.id}`} key={item.id}>
-                                <View className="border-b border-b-neutral-100 py-8 w-full">
-                                    <View className="px-6">
-                                        <Text className="text-neutral-700 font-bold text-lg pb-1">{item.title}</Text>
-                                        <Text className="text-neutral-600 text-base leading-7" numberOfLines={2}>
-                                            {item.description}
-                                        </Text>
-                                    </View>
-                                    <View className="flex-row items-center px-6 pt-4 justify-between">
-                                        <View className="bg-neutral-100 py-2 px-3 rounded-lg">
-                                            <Text className="text-sm font-semibold text-neutral-600">{item.disease_tag}</Text>
+                            <Link href={`/medical/questions/${item.id}`} key={item.id} asChild>
+                                <Pressable>
+                                    <View className="border-b border-b-neutral-100 py-8 w-full">
+                                        <View className="px-6">
+                                            <Text className="text-neutral-700 font-bold text-lg pb-1">{item.title}</Text>
+                                            <Text className="text-neutral-600 text-base leading-7" numberOfLines={2}>
+                                                {item.description}
+                                            </Text>
                                         </View>
-                                        <Text className="text-sm text-neutral-600">{formatTimeAgo(item.created_at)}</Text>
+                                        <View className="flex-row items-center px-6 pt-4 justify-between">
+                                            <View className="bg-neutral-100 py-2 px-3 rounded-lg">
+                                                <Text className="text-sm font-semibold text-neutral-600">{item.disease_tag}</Text>
+                                            </View>
+                                            <Text className="text-sm text-neutral-600">{formatTimeAgo(item.created_at)}</Text>
+                                        </View>
                                     </View>
-                                </View>
+                                </Pressable>
                             </Link>
                         ))
+                    )}
+                    {relatedQuestions.length > 0 && (
+                        <Link
+                            href={{
+                                pathname: "/medical/questions/questions",
+                                params: { selectedTreatmentTag: question.disease_tag.tag_name }
+                            }}
+                            asChild>
+                            <Pressable>
+                                <View className="py-5 w-full">
+                                    <View className="flex-row items-center justify-center ml-2">
+                                        <Text className="text-center text-base text-neutral-600 mr-1">{seeMoreButtonText}</Text>
+                                        <AntDesign name="right" size={12} color="#6c6c6c" />
+                                    </View>
+                                </View>
+                            </Pressable>
+                        </Link>
                     )}
                 </View>
             </ScrollView>

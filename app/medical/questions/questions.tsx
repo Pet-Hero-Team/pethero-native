@@ -5,7 +5,7 @@ import { supabase } from '@/supabase/supabase';
 import { formatTimeAgo, getAnimalTypeLabel, getTreatmentLabel } from '@/utils/formating';
 import { FontAwesome6, Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Link, router } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 
@@ -14,8 +14,7 @@ const PAGE_SIZE = 10;
 const fetchQuestions = async ({ pageParam = 0, queryKey }) => {
     const from = pageParam * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const selectedTreatmentTag = queryKey[1].selectedTreatmentTag;
-
+    const selectedTreatmentTag = queryKey[1]?.selectedTreatmentTag;
 
     if (selectedTreatmentTag) {
         const { data: tagData, error: tagError } = await supabase
@@ -28,7 +27,6 @@ const fetchQuestions = async ({ pageParam = 0, queryKey }) => {
 
         if (tagError) throw new Error(`태그 조회 실패: ${tagError.message}`);
 
-
         if (tagData.length === 0) {
             return {
                 data: [],
@@ -37,7 +35,6 @@ const fetchQuestions = async ({ pageParam = 0, queryKey }) => {
         }
 
         const petQuestionIds = tagData.map(item => item.pet_question_id);
-
 
         const { data, error } = await supabase
             .from('pet_questions')
@@ -72,7 +69,6 @@ const fetchQuestions = async ({ pageParam = 0, queryKey }) => {
         };
 
     } else {
-
         const { data, error } = await supabase
             .from('pet_questions')
             .select(`
@@ -128,8 +124,9 @@ const QuestionItem = ({ item }) => (
 );
 
 export default function QuestionsScreen() {
+    const { selectedTreatmentTag: initialTreatmentTag } = useLocalSearchParams<{ selectedTreatmentTag?: string }>();
     const [isModalVisible, setModalVisible] = useState(false);
-    const [selectedTreatmentTag, setSelectedTreatmentTag] = useState(null);
+    const [selectedTreatmentTag, setSelectedTreatmentTag] = useState<string | null>(initialTreatmentTag || null);
     const scrollViewRef = useRef<ScrollView>(null);
 
     const {
@@ -188,6 +185,8 @@ export default function QuestionsScreen() {
         );
     }
 
+    const buttonText = selectedTreatmentTag ? getTreatmentLabel(selectedTreatmentTag) : '증상 선택';
+
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="px-6 bg-white">
@@ -201,7 +200,7 @@ export default function QuestionsScreen() {
             <View className='flex-row px-6 justify-between pt-2 pb-4 items-center'>
                 <Text className="text-2xl font-extrabold text-neutral-900">{selectedTreatmentTag ? getTreatmentLabel(selectedTreatmentTag) : '방금 올라온 질문'}</Text>
                 <Pressable onPress={toggleModal} className='bg-neutral-100 rounded-lg px-4 py-1 flex-row items-center'>
-                    <Text className='text-sm text-neutral-800 mr-1'>{selectedTreatmentTag ? '다른 증상 선택' : '증상 선택'}</Text>
+                    <Text className='text-sm text-neutral-800 mr-1'>{buttonText}</Text>
                     <FontAwesome6 name="chevron-down" size={6} color="#262626" />
                 </Pressable>
             </View>
