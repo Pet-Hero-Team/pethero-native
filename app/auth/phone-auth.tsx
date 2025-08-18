@@ -13,13 +13,13 @@ export default function PhoneAuthScreen() {
     const handleSendOtp = async () => {
         setLoading(true);
         try {
-            // 전화번호 형식: 국제 전화번호 (예: +821012345678)
             const formattedPhone = phone.startsWith('+') ? phone : `+82${phone.replace(/^0/, '')}`;
             const { error } = await supabase.auth.signInWithOtp({ phone: formattedPhone });
             if (error) throw error;
             setIsOtpSent(true);
             Alert.alert('성공', '인증 코드가 전송되었습니다.');
         } catch (error) {
+            console.error('Send OTP Error:', JSON.stringify(error, null, 2));
             Alert.alert('OTP 전송 실패', (error as Error).message);
         } finally {
             setLoading(false);
@@ -40,14 +40,21 @@ export default function PhoneAuthScreen() {
 
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
-                .select('id, has_pet')
+                .select('id, has_pet, user_role')
                 .eq('id', user.id)
                 .single();
 
             if (profileError && profileError.code !== 'PGRST116') throw profileError;
 
-            router.push(profile?.has_pet ? '/(tabs)/(home)' : '/auth/auth-info');
+            if (!profile) {
+                // 프로필이 없으면 auth-info로 이동
+                router.push('/auth/auth-info');
+            } else {
+                // 프로필이 있고 has_pet이 true면 홈으로, 아니면 auth-info로
+                router.push(profile.has_pet ? '/(tabs)/(home)' : '/auth/auth-info');
+            }
         } catch (error) {
+            console.error('OTP Verify Error:', JSON.stringify(error, null, 2));
             Alert.alert('OTP 인증 실패', (error as Error).message);
         } finally {
             setLoading(false);
@@ -89,8 +96,7 @@ export default function PhoneAuthScreen() {
                     </View>
                 )}
                 <TouchableOpacity
-                    className={`py-4 rounded-xl ${loading || !phone || (isOtpSent && !otp) ? 'bg-gray-300' : 'bg-orange-500'
-                        }`}
+                    className={`py-4 rounded-xl ${loading || !phone || (isOtpSent && !otp) ? 'bg-gray-300' : 'bg-orange-500'}`}
                     onPress={isOtpSent ? handleVerifyOtp : handleSendOtp}
                     disabled={loading || !phone || (isOtpSent && !otp)}
                 >

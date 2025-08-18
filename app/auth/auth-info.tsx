@@ -1,10 +1,10 @@
 import { PET_OPTIONS } from '@/constants/pet';
 import { validationRules } from '@/constants/validationRules';
-import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -385,8 +385,61 @@ const SubmitButton = ({ disabled, onPress }) => (
     </TouchableOpacity>
 );
 
+const useAuth = () => {
+    const [user, setUser] = useState(null);
+    const [session, setSession] = useState(null);
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            console.log('Checking auth state in useAuth');
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error || !session || !session.user) {
+                    console.error('useAuth getSession error or no session/user:', error);
+                    setSession(null);
+                    setUser(null);
+                    await SecureStore.deleteItemAsync('profileCompleted');
+                    router.replace('/auth');
+                    return;
+                }
+                setSession(session);
+                setUser(session.user);
+                console.log('useAuth session found:', { userId: session.user.id });
+            } catch (error) {
+                console.error('useAuth error:', error);
+                setSession(null);
+                setUser(null);
+                await SecureStore.deleteItemAsync('profileCompleted');
+                router.replace('/auth');
+            }
+        };
+
+        checkAuth();
+
+        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            console.log('useAuth auth state changed:', { event: _event, session: !!session });
+            if (!session || !session.user) {
+                console.log('No session or user in useAuth, redirecting to /auth');
+                setSession(null);
+                setUser(null);
+                await SecureStore.deleteItemAsync('profileCompleted');
+                router.replace('/auth');
+            } else {
+                setSession(session);
+                setUser(session.user);
+            }
+        });
+
+        return () => {
+            authListener?.subscription.unsubscribe();
+        };
+    }, []);
+
+    return { user, session };
+};
+
 export default function ReportScreen() {
-    const { user } = useAuth();
+    const { user, session } = useAuth();
     const today = new Date();
     const initialYear = today.getFullYear();
     const initialMonth = today.getMonth();
@@ -495,12 +548,21 @@ export default function ReportScreen() {
 
     const onSubmit = async (data) => {
         try {
-            if (!user) {
+            if (!session || !user) {
+                console.log('No session or user, redirecting to /auth');
                 Alert.alert('오류', '사용자 인증 정보가 없습니다.');
+                await SecureStore.deleteItemAsync('profileCompleted');
                 router.push('/auth');
                 return;
             }
 
+            console.log('Submitting profile:', {
+                id: user.id,
+                username: data.username,
+                avatar_url: data.image || null,
+                has_pet: reportType === 'sighting',
+                user_role: 'user',
+            });
 
             const { data: existingProfile, error: checkError } = await supabase
                 .from('profiles')
@@ -524,12 +586,15 @@ export default function ReportScreen() {
                 birthday = '기억나지 않음';
             }
 
+            const defaultImageUrl = 'https://your-supabase-storage-url/default-profile.png'; // Supabase Storage의 기본 이미지 URL로 교체
+            const avatarUrl = data.image || defaultImageUrl;
 
             const { error: profileError } = await supabase.from('profiles').upsert({
                 id: user.id,
                 username: data.username,
-                avatar_url: data.image || null,
+                avatar_url: avatarUrl,
                 has_pet: reportType === 'sighting',
+                user_role: 'user',
                 updated_at: new Date().toISOString(),
             });
             if (profileError) {
@@ -539,8 +604,13 @@ export default function ReportScreen() {
                 throw new Error(`프로필 생성 실패: ${profileError.message}`);
             }
 
-
             if (reportType === 'sighting') {
+                console.log('Submitting pet:', {
+                    user_id: user.id,
+                    name: data.petName,
+                    category: data.category,
+                    birthday,
+                });
                 const { error: petError } = await supabase.from('pets').insert({
                     user_id: user.id,
                     name: data.petName,
@@ -552,9 +622,14 @@ export default function ReportScreen() {
                 if (petError) throw new Error(`반려동물 등록 실패: ${petError.message}`);
             }
 
+            await SecureStore.setItemAsync('profileCompleted', 'true');
+            console.log('Profile completed, set profileCompleted to true');
             router.push('/(tabs)/(home)');
         } catch (error) {
-            Alert.alert('제출 실패', (error as Error).message);
+            console.error('Submit error:', error);
+            Alert.alert('제출 실패', '프로필을 저장할 수 없습니다. 다시 시도해주세요.');
+            await SecureStore.deleteItemAsync('profileCompleted');
+            router.push('/auth');
         }
     };
 

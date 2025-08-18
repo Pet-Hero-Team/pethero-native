@@ -83,7 +83,7 @@ export default function AuthScreen() {
                     <View className="mt-4 flex-row items-center justify-center">
                         <Text className="text-sm text-neutral-500 px-4">계정찾기</Text>
                         <View className="w-px h-4 bg-neutral-200" />
-                        <Link href="/auth/vet-signup" asChild>
+                        <Link href="/auth/vet-index" asChild>
                             <Text className="text-sm text-neutral-500 px-4">수의사이신가요?</Text>
                         </Link>
                     </View>
