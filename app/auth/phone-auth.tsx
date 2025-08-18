@@ -38,21 +38,10 @@ export default function PhoneAuthScreen() {
             if (error) throw error;
             if (!user) throw new Error('사용자 정보가 없습니다.');
 
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('id, has_pet, user_role')
-                .eq('id', user.id)
-                .single();
+            // OTP 인증 성공 후, _layout.tsx에 라우팅을 위임합니다.
+            // 프로필이 없는 경우 auth-info로, 있는 경우 메인으로 이동합니다.
+            router.replace('/(tabs)');
 
-            if (profileError && profileError.code !== 'PGRST116') throw profileError;
-
-            if (!profile) {
-                // 프로필이 없으면 auth-info로 이동
-                router.push('/auth/auth-info');
-            } else {
-                // 프로필이 있고 has_pet이 true면 홈으로, 아니면 auth-info로
-                router.push(profile.has_pet ? '/(tabs)/(home)' : '/auth/auth-info');
-            }
         } catch (error) {
             console.error('OTP Verify Error:', JSON.stringify(error, null, 2));
             Alert.alert('OTP 인증 실패', (error as Error).message);
