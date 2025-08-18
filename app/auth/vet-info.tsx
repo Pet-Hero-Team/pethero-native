@@ -1,5 +1,4 @@
 import { supabase } from '@/supabase/supabase';
-import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -65,11 +64,6 @@ export default function VetInfoScreen() {
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="flex-1 px-6">
-                <View className="flex-row justify-end mt-4">
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Ionicons name="close" size={24} color="#51555c" />
-                    </TouchableOpacity>
-                </View>
                 <Text className="text-2xl font-semibold mt-4">병원을 선택해주세요</Text>
                 <Text className="mt-3 mb-8 text-gray-600">소속된 동물병원을 선택해주세요.</Text>
                 <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>

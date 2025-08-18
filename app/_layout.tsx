@@ -85,13 +85,32 @@ function AuthStatusManager() {
             router.replace('/auth/auth-info');
           }
         } else {
-          console.log('Profile exists. has_pet:', profile.has_pet);
+          console.log('Profile exists. user_role:', profile.user_role, ', has_pet:', profile.has_pet);
           if (profile.user_role === 'vet') {
-            if (inAuthGroup) {
-              router.replace('/(tabs)');
+            const { data: vetProfile, error: vetError } = await supabase
+              .from('vets')
+              .select('hospital_id')
+              .eq('user_id', session.user.id)
+              .single();
+
+            if (vetError) {
+              console.error('Error fetching vet profile:', vetError);
+              router.replace('/auth');
+              return;
+            }
+
+            // 수의사 프로필 설정 확인
+            if (vetProfile.hospital_id) {
+              if (inAuthGroup) {
+                router.replace('/(tabs)');
+              }
+            } else {
+              if (!inAuthGroup || segments[1] !== 'vet-info') {
+                router.replace('/auth/vet-info');
+              }
             }
           } else {
-            // 수정된 부분: has_pet이 null이 아닐 때 (true 또는 false) 메인으로 이동
+            // 일반 사용자 프로필 설정 확인
             if (profile.has_pet !== null) {
               if (inAuthGroup) {
                 router.replace('/(tabs)');
