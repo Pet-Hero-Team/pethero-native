@@ -1,8 +1,7 @@
-import { supabase } from '@/supabase/supabase';
 import { signInWithApple, signInWithKakao } from '@/utils/auth';
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import { initializeKakaoSDK } from '@react-native-kakao/core';
-import { Link, router } from 'expo-router';
+import { Link } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert, Image, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -18,18 +17,9 @@ export default function AuthScreen() {
     const handleSocialLogin = async (loginFn: () => Promise<void>) => {
         try {
             await loginFn();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('사용자 정보가 없습니다.');
-
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('id, has_pet')
-                .eq('id', user.id)
-                .single();
-
-            if (profileError && profileError.code !== 'PGRST116') throw profileError;
-
-            router.push(profile?.has_pet ? '/(tabs)/(home)' : '/auth/auth-info');
+            // 로그인 성공 후 별도의 라우팅 로직을 제거하고,
+            // AuthStatusManager가 다음 단계를 결정하도록 맡깁니다.
+            // await supabase.auth.getSession()이 AuthStatusManager를 트리거합니다.
         } catch (error) {
             Alert.alert('로그인 실패', (error as Error).message);
         }
