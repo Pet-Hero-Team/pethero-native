@@ -640,15 +640,27 @@ export default function MapsScreen() {
     initializeLocation();
   }, []);
 
+  // Check for significant change in map position or zoom level before refetching data
   useEffect(() => {
     if (debouncedRegion && isInitialRegionSet && !loading && prevRegion) {
+      // Calculate distance change
       const distance = calculateDistance(
         debouncedRegion.latitude,
         debouncedRegion.longitude,
         prevRegion.latitude,
         prevRegion.longitude
       );
-      if (distance >= 500) {
+
+      // Calculate zoom level change
+      const latDeltaChange = Math.abs(debouncedRegion.latitudeDelta - prevRegion.latitudeDelta);
+      const lonDeltaChange = Math.abs(debouncedRegion.longitudeDelta - prevRegion.longitudeDelta);
+
+      // Define thresholds for triggering a new fetch
+      const distanceThreshold = 500; // Refetch if map center moves by more than 500 meters
+      const zoomThreshold = 0.005;  // Refetch if zoom level changes significantly
+
+      // Fetch new data only if a significant change is detected
+      if (distance >= distanceThreshold || latDeltaChange > zoomThreshold || lonDeltaChange > zoomThreshold) {
         fetchData(debouncedRegion);
         getAdministrativeArea(debouncedRegion.latitude, debouncedRegion.longitude).then(setCurrentArea);
         setPrevRegion(debouncedRegion);
