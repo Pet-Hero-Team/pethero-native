@@ -58,6 +58,7 @@ function AuthStatusManager() {
     }
   }, [session, isLoading]);
 
+
   const handleRouting = async () => {
     const inAuthGroup = segments[0] === 'auth';
 
@@ -71,7 +72,7 @@ function AuthStatusManager() {
           .from('profiles')
           .select('id, user_role, has_pet')
           .eq('id', session.user.id)
-          .single();
+          .maybeSingle();
 
         if (profileError && profileError.code !== 'PGRST116') {
           console.error('Error fetching profile:', profileError);
@@ -86,12 +87,13 @@ function AuthStatusManager() {
           }
         } else {
           console.log('Profile exists. user_role:', profile.user_role, ', has_pet:', profile.has_pet);
+
           if (profile.user_role === 'vet') {
             const { data: vetProfile, error: vetError } = await supabase
               .from('vets')
               .select('hospital_id')
               .eq('user_id', session.user.id)
-              .single();
+              .maybeSingle();
 
             if (vetError) {
               console.error('Error fetching vet profile:', vetError);
@@ -99,25 +101,28 @@ function AuthStatusManager() {
               return;
             }
 
-            // 수의사 프로필 설정 확인
-            if (vetProfile.hospital_id) {
-              if (inAuthGroup) {
-                router.replace('/(tabs)');
-              }
-            } else {
+            // ✅ 수정된 로직: 병원 정보가 없을 경우 항상 vet-info로 리디렉션
+            if (!vetProfile || vetProfile.hospital_id === null) {
+              console.log('Vet profile incomplete, redirecting to vet-info');
               if (!inAuthGroup || segments[1] !== 'vet-info') {
                 router.replace('/auth/vet-info');
+              }
+            } else {
+              // 병원 정보가 있을 경우에만 tabs로 이동
+              if (inAuthGroup) {
+                console.log('Vet profile complete, redirecting to tabs');
+                router.replace('/(tabs)');
               }
             }
           } else {
             // 일반 사용자 프로필 설정 확인
-            if (profile.has_pet !== null) {
-              if (inAuthGroup) {
-                router.replace('/(tabs)');
-              }
-            } else {
+            if (profile.has_pet === null) {
               if (!inAuthGroup || segments[1] !== 'auth-info') {
                 router.replace('/auth/auth-info');
+              }
+            } else {
+              if (inAuthGroup) {
+                router.replace('/(tabs)');
               }
             }
           }

@@ -3,7 +3,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Dimensions, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
 import { OtpInput } from 'react-native-otp-entry';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -13,21 +24,35 @@ interface FormData {
     license_number: string;
     phone: string;
     otp: string;
+    hospital_name?: string;
+    business_registration_number?: string;
+    address?: string;
 }
 
 export default function VetSignUpScreen() {
-    const { control, handleSubmit, formState: { errors }, trigger, getValues, resetField } = useForm<FormData>({
+    const {
+        control,
+        handleSubmit,
+        formState: { errors },
+        trigger,
+        getValues,
+        resetField,
+    } = useForm<FormData>({
         defaultValues: {
             full_name: '',
             license_number: '',
             phone: '',
             otp: '',
+            hospital_name: '미지정',
+            business_registration_number: '미지정',
+            address: '미지정',
         },
         mode: 'onChange',
     });
 
     const [currentStep, setCurrentStep] = useState(0);
     const [isResending, setIsResending] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
     const [isNameFocused, setIsNameFocused] = useState(false);
     const [isLicenseFocused, setIsLicenseFocused] = useState(false);
     const [isPhoneFocused, setIsPhoneFocused] = useState(false);
@@ -80,6 +105,7 @@ export default function VetSignUpScreen() {
 
     const verifyOtp = async (otp: string) => {
         if (otp.length !== 6) return;
+        setIsVerifying(true);
 
         const phone = getValues('phone');
         const formattedPhone = formatPhoneNumberForSupabase(phone);
@@ -90,30 +116,21 @@ export default function VetSignUpScreen() {
                 token: otp,
                 type: 'sms',
             });
+
             if (error || !session) throw error || new Error('인증 실패');
 
             await supabase.auth.refreshSession();
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) throw userError || new Error('사용자 인증 실패');
 
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('user_role')
-                .eq('id', user.id)
-                .single();
-            if (profileError || !profile) throw profileError || new Error('프로필 조회 실패');
-            let isConversion = false;
-            if (profile.user_role === 'user') {
-                isConversion = true;
-            }
-
-            const { error: signupError } = await supabase.rpc('handle_vet_signup', {
+            const { data: result, error: signupError } = await supabase.rpc('handle_vet_signup_custom', {
                 p_user_id: user.id,
                 p_full_name: getValues('full_name'),
                 p_license_number: getValues('license_number'),
-                p_hospital_id: null,
-                p_hospital_name: null,
-                p_business_registration_number: null,
+                p_hospital_name: getValues('hospital_name'),
+                p_business_registration_number: getValues('business_registration_number'),
+                p_address: getValues('address'),
+                p_phone: getValues('phone'),
             });
             if (signupError) throw signupError;
 
@@ -121,14 +138,19 @@ export default function VetSignUpScreen() {
             resetField('license_number');
             resetField('phone');
             resetField('otp');
-            if (isConversion) {
-                Alert.alert('성공', '성공적으로 수의사로 전환되었습니다');
+
+            if (result === 'converted') {
+                Alert.alert('성공', '성공적으로 수의사로 전환되었습니다.');
+            } else { // result === 'created'
+                Alert.alert('성공', '성공적으로 수의사 회원가입이 완료되었습니다.');
             }
             router.replace('/auth/vet-info');
         } catch (error) {
             console.error('Verify OTP Error:', JSON.stringify(error, null, 2));
             Alert.alert('오류', `회원가입 실패: ${(error as Error).message}`);
             resetField('otp');
+        } finally {
+            setIsVerifying(false);
         }
     };
 
@@ -150,7 +172,7 @@ export default function VetSignUpScreen() {
 
     const isNextDisabled = () => {
         const currentStepName = steps[currentStep].name as keyof FormData;
-        return !getValues(currentStepName);
+        return !getValues(currentStepName) || isResending || isVerifying;
     };
 
     const renderProgressBar = () => {
@@ -284,9 +306,9 @@ export default function VetSignUpScreen() {
                             )}
                         />
                         {errors.otp && <Text className="text-red-500 mt-2">{errors.otp.message}</Text>}
-                        <TouchableOpacity onPress={resendOtp} disabled={isResending}>
-                            <Text className={`text-blue-500 mt-8 text-center ${isResending ? 'opacity-50' : ''}`}>
-                                {isResending ? '재전송 중...' : '메시지가 오지 않습니까? 재전송'}
+                        <TouchableOpacity onPress={resendOtp} disabled={isResending || isVerifying}>
+                            <Text className={`text-blue-500 mt-8 text-center ${isResending || isVerifying ? 'opacity-50' : ''}`}>
+                                {isVerifying ? '확인 중...' : isResending ? '재전송 중...' : '메시지가 오지 않습니까? 재전송'}
                             </Text>
                         </TouchableOpacity>
                     </View>

@@ -35,24 +35,13 @@ export default function VetInfoScreen() {
             const { data: { user }, error: userError } = await supabase.auth.getUser();
             if (userError || !user) throw userError || new Error('사용자 정보 없음');
 
-            console.log('Calling handle_vet_signup with:', {
+            // ✅ 수정된 부분: update_vet_hospital_info 함수 호출
+            const { error: updateError } = await supabase.rpc('update_vet_hospital_info', {
                 p_user_id: user.id,
-                p_full_name: null,
-                p_license_number: null,
                 p_hospital_id: selectedHospitalId,
-                p_hospital_name: null,
-                p_business_registration_number: null,
             });
 
-            const { error: signupError } = await supabase.rpc('handle_vet_signup', {
-                p_user_id: user.id,
-                p_full_name: null,
-                p_license_number: null,
-                p_hospital_id: selectedHospitalId,
-                p_hospital_name: null,
-                p_business_registration_number: null,
-            });
-            if (signupError) throw signupError;
+            if (updateError) throw updateError;
 
             router.replace('/(tabs)/(home)');
         } catch (error) {
