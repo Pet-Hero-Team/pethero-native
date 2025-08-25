@@ -101,27 +101,27 @@ function AuthStatusManager() {
               return;
             }
 
-            // ✅ 수정된 로직: 병원 정보가 없을 경우 항상 vet-info로 리디렉션
             if (!vetProfile || vetProfile.hospital_id === null) {
               console.log('Vet profile incomplete, redirecting to vet-info');
               if (!inAuthGroup || segments[1] !== 'vet-info') {
                 router.replace('/auth/vet-info');
               }
             } else {
-              // 병원 정보가 있을 경우에만 tabs로 이동
               if (inAuthGroup) {
                 console.log('Vet profile complete, redirecting to tabs');
                 router.replace('/(tabs)');
               }
             }
           } else {
-            // 일반 사용자 프로필 설정 확인
+            // 일반 사용자: has_pet이 null일 때만 auth-info로 이동
             if (profile.has_pet === null) {
               if (!inAuthGroup || segments[1] !== 'auth-info') {
+                console.log('has_pet is null, redirecting to auth-info');
                 router.replace('/auth/auth-info');
               }
             } else {
               if (inAuthGroup) {
+                console.log('has_pet is set, redirecting to tabs');
                 router.replace('/(tabs)');
               }
             }
