@@ -772,38 +772,36 @@ export default function RescuesCreateScreen() {
                 throw new Error('로그인이 필요합니다.');
             }
 
-            const { data: authData, error: authError } = await supabase.auth.getUser();
-            if (authError || !authData.user) {
-                throw new Error(`인증 실패: ${authError?.message || '사용자 정보 없음'}`);
+            // 인증 상태 확인
+            const { data: authData, error: authError } = await supabase.auth.getSession();
+            if (authError || !authData.session) {
+                throw new Error(`인증 실패: ${authError?.message || '세션 정보 없음'}`);
             }
-            const authUid = authData.user.id;
+            const authUid = authData.session.user.id;
             if (user.id !== authUid) {
                 throw new Error('사용자 ID 불일치');
             }
 
-            const rescuePayload = {
-                user_id: user.id,
-                title: data.title,
-                description: data.details || null,
-                animal_type: data.category,
-                latitude: data.location?.latitude || 0,
-                longitude: data.location?.longitude || 0,
-                address: data.location?.address || '',
-                bounty: data.bounty || 0,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            };
-            const { data: rescueData, error: rescueError } = await supabase
-                .from('rescues')
-                .insert(rescuePayload)
-                .select()
-                .single();
-            if (rescueError) {
-                console.error(`Rescue insert error: ${JSON.stringify(rescueError)}`);
-                throw new Error(`구조 제보 생성 실패: ${rescueError.message}`);
+            // 저장 프로시저 호출
+            const { data: createData, error: createError } = await supabase
+                .rpc('create_rescue_with_chat', {
+                    p_user_id: user.id,
+                    p_title: data.title,
+                    p_description: data.details || null,
+                    p_animal_type: data.category,
+                    p_latitude: data.location?.latitude || 0,
+                    p_longitude: data.location?.longitude || 0,
+                    p_address: data.location?.address || '',
+                    p_bounty: data.bounty || 0,
+                });
+            if (createError) {
+                console.error(`Create rescue with chat error: ${JSON.stringify(createError)}`);
+                throw new Error(`구조 제보 및 채팅방 생성 실패: ${createError.message}`);
             }
-            console.log(`Rescue inserted: ${rescueData.id}`);
+            const { rescue_id, chat_id } = createData[0];
+            console.log(`Rescue inserted: ${rescue_id}, Chat inserted: ${chat_id}`);
 
+            // 이미지 업로드
             const batchSize = 3;
             const imageUrls = [];
             for (let i = 0; i < data.images.length; i += batchSize) {
@@ -864,7 +862,7 @@ export default function RescuesCreateScreen() {
 
             if (imageUrls.length > 0) {
                 const imageInserts = imageUrls.map((url) => ({
-                    rescue_id: rescueData.id,
+                    rescue_id,
                     url,
                     created_at: new Date().toISOString(),
                 }));
@@ -878,7 +876,8 @@ export default function RescuesCreateScreen() {
                 console.log(`Inserted ${imageInserts.length} images to rescues_images`);
             }
 
-            if (data.tags.length > 0 && rescueData.id) {
+            // 태그 삽입
+            if (data.tags.length > 0 && rescue_id) {
                 const tagInserts = await Promise.all(data.tags.map(async (tag_name) => {
                     const { data: tagData, error: tagError } = await supabase
                         .from('rescue_tags')
@@ -889,7 +888,7 @@ export default function RescuesCreateScreen() {
                         return null;
                     }
                     return {
-                        rescue_id: rescueData.id,
+                        rescue_id,
                         rescue_tag_id: tagData.id,
                         created_at: new Date().toISOString(),
                     };
@@ -939,7 +938,6 @@ export default function RescuesCreateScreen() {
             setIsLoading(false);
         }
     };
-
     const renderProgressBar = () => {
         const progress = ((currentStep + 1) / steps.length) * 100;
         return (
