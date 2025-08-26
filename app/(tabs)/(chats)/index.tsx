@@ -1,3 +1,4 @@
+import { chatEmitter } from '@/app/chat/[id]';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import Entypo from '@expo/vector-icons/Entypo';
@@ -13,162 +14,162 @@ export default function ChatsScreen() {
   const [groupChats, setGroupChats] = useState([]);
   const [personalChats, setPersonalChats] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const tabs = [
     { id: 'group', label: '그룹' },
     { id: 'personal', label: '개인' },
   ];
 
-  // 채팅 목록 가져오기
+  // 사용자 로딩 상태 확인
   useEffect(() => {
-    if (!user) {
+    if (user !== undefined) {
+      setAuthLoading(false);
+    }
+  }, [user]);
+
+  // 채팅 목록 가져오기
+  const fetchChats = async () => {
+    if (authLoading || !user) return;
+
+    setLoading(true);
+    try {
+      // 그룹 채팅 가져오기
+      const { data: groupData, error: groupError } = await supabase
+        .from('chat_participants')
+        .select(`
+          chat_id,
+          last_read_at,
+          chats (
+            id,
+            created_at,
+            rescue_chats (
+              rescue_id,
+              rescues (
+                title,
+                animal_type,
+                address,
+                status,
+                rescues_images (url)
+              )
+            )
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('chats.rescue_chats.rescues.status', '수색 중');
+
+      if (groupError) {
+        console.error('Group chats fetch error:', JSON.stringify(groupError, null, 2));
+        throw new Error(`그룹 채팅 로드 실패: ${groupError.message}`);
+      }
+
+      // 읽지 않은 메시지 수 및 마지막 메시지
+      const groupChatsWithUnread = await Promise.all(
+        (groupData || []).map(async (chat) => {
+          const { data: lastMessage, error: messageError } = await supabase
+            .from('messages')
+            .select('content, created_at')
+            .eq('chat_id', chat.chat_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const { count, error: countError } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact' })
+            .eq('chat_id', chat.chat_id)
+            .gt('created_at', chat.last_read_at || '1970-01-01');
+          if (countError) {
+            console.error('Unread count error:', JSON.stringify(countError, null, 2));
+          }
+          if (messageError) {
+            console.error('Last message error:', JSON.stringify(messageError, null, 2));
+          }
+          return {
+            ...chat,
+            unread_count: count || 0,
+            last_message: lastMessage?.content || '메시지 없음',
+            last_message_time: lastMessage?.created_at || chat.chats.created_at,
+          };
+        })
+      );
+      setGroupChats(groupChatsWithUnread);
+
+      // rescue_chats에서 chat_id 목록 가져오기
+      const { data: rescueChatIds, error: rescueChatError } = await supabase
+        .from('rescue_chats')
+        .select('chat_id');
+      if (rescueChatError) {
+        console.error('Rescue chats fetch error:', JSON.stringify(rescueChatError, null, 2));
+        throw new Error(`rescue_chats 로드 실패: ${rescueChatError.message}`);
+      }
+      const rescueChatIdList = (rescueChatIds || []).map((rc) => rc.chat_id);
+
+      // 개인 채팅 가져오기
+      let personalQuery = supabase
+        .from('chat_participants')
+        .select(`
+          chat_id,
+          last_read_at,
+          chats (
+            id,
+            created_at,
+            messages (
+              content,
+              created_at
+            )
+          ),
+          profiles!chat_participants_user_id_fkey (id, display_name, avatar_url)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { foreignTable: 'chats.messages', ascending: false });
+
+      if (rescueChatIdList.length > 0) {
+        personalQuery = personalQuery.not('chat_id', 'in', rescueChatIdList);
+      }
+
+      const { data: personalData, error: personalError } = await personalQuery;
+
+      if (personalError) {
+        console.error('Personal chats fetch error:', JSON.stringify(personalError, null, 2));
+        throw new Error(`개인 채팅 로드 실패: ${personalError.message}`);
+      }
+
+      // 읽지 않은 메시지 수 및 마지막 메시지
+      const personalChatsWithUnread = await Promise.all(
+        (personalData || []).map(async (chat) => {
+          const { count, error: countError } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact' })
+            .eq('chat_id', chat.chat_id)
+            .gt('created_at', chat.last_read_at || '1970-01-01');
+          if (countError) {
+            console.error('Unread count error:', JSON.stringify(countError, null, 2));
+          }
+          const lastMessage = chat.chats.messages[0] || { content: '메시지 없음', created_at: chat.chats.created_at };
+          return {
+            ...chat,
+            unread_count: count || 0,
+            last_message: lastMessage.content,
+            last_message_time: lastMessage.created_at,
+          };
+        })
+      );
+      setPersonalChats(personalChatsWithUnread);
+    } catch (error) {
       Toast.show({
         type: 'error',
-        text1: '로그인이 필요합니다',
+        text1: '채팅 목록 로드 실패',
+        text2: error.message,
         position: 'top',
         visibilityTime: 3000,
       });
+    } finally {
       setLoading(false);
-      return;
     }
+  };
 
-    const fetchChats = async () => {
-      setLoading(true);
-      try {
-        // 그룹 채팅 가져오기
-        const { data: groupData, error: groupError } = await supabase
-          .from('chat_participants')
-          .select(`
-            chat_id,
-            last_read_at,
-            chats (
-              id,
-              created_at,
-              rescue_chats (
-                rescue_id,
-                rescues (
-                  title,
-                  animal_type,
-                  address,
-                  status,
-                  rescues_images (url)
-                )
-              )
-            )
-          `)
-          .eq('user_id', user.id)
-          .eq('chats.rescue_chats.rescues.status', '수색 중');
-
-        if (groupError) {
-          console.error('Group chats fetch error:', JSON.stringify(groupError, null, 2));
-          throw new Error(`그룹 채팅 로드 실패: ${groupError.message}`);
-        }
-
-        // 읽지 않은 메시지 수 및 마지막 메시지
-        const groupChatsWithUnread = await Promise.all(
-          (groupData || []).map(async (chat) => {
-            const { data: lastMessage, error: messageError } = await supabase
-              .from('messages')
-              .select('content, created_at')
-              .eq('chat_id', chat.chat_id)
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-            const { count, error: countError } = await supabase
-              .from('messages')
-              .select('id', { count: 'exact' })
-              .eq('chat_id', chat.chat_id)
-              .gt('created_at', chat.last_read_at || '1970-01-01');
-            if (countError) {
-              console.error('Unread count error:', JSON.stringify(countError, null, 2));
-            }
-            if (messageError) {
-              console.error('Last message error:', JSON.stringify(messageError, null, 2));
-            }
-            return {
-              ...chat,
-              unread_count: count || 0,
-              last_message: lastMessage?.content || '메시지 없음',
-              last_message_time: lastMessage?.created_at || chat.chats.created_at,
-            };
-          })
-        );
-        setGroupChats(groupChatsWithUnread);
-
-        // rescue_chats에서 chat_id 목록 가져오기
-        const { data: rescueChatIds, error: rescueChatError } = await supabase
-          .from('rescue_chats')
-          .select('chat_id');
-        if (rescueChatError) {
-          console.error('Rescue chats fetch error:', JSON.stringify(rescueChatError, null, 2));
-          throw new Error(`rescue_chats 로드 실패: ${rescueChatError.message}`);
-        }
-        const rescueChatIdList = (rescueChatIds || []).map((rc) => rc.chat_id);
-
-        // 개인 채팅 가져오기
-        let personalQuery = supabase
-          .from('chat_participants')
-          .select(`
-            chat_id,
-            last_read_at,
-            chats (
-              id,
-              created_at,
-              messages (
-                content,
-                created_at
-              )
-            ),
-            profiles!chat_participants_user_id_fkey (id, display_name, avatar_url)
-          `)
-          .eq('user_id', user.id)
-          .order('created_at', { foreignTable: 'chats.messages', ascending: false });
-
-        // rescueChatIdList가 비어 있지 않을 때만 not.in 필터 추가
-        if (rescueChatIdList.length > 0) {
-          personalQuery = personalQuery.not('chat_id', 'in', rescueChatIdList);
-        }
-
-        const { data: personalData, error: personalError } = await personalQuery;
-
-        if (personalError) {
-          console.error('Personal chats fetch error:', JSON.stringify(personalError, null, 2));
-          throw new Error(`개인 채팅 로드 실패: ${personalError.message}`);
-        }
-
-        // 읽지 않은 메시지 수 및 마지막 메시지
-        const personalChatsWithUnread = await Promise.all(
-          (personalData || []).map(async (chat) => {
-            const { count, error: countError } = await supabase
-              .from('messages')
-              .select('id', { count: 'exact' })
-              .eq('chat_id', chat.chat_id)
-              .gt('created_at', chat.last_read_at || '1970-01-01');
-            if (countError) {
-              console.error('Unread count error:', JSON.stringify(countError, null, 2));
-            }
-            const lastMessage = chat.chats.messages[0] || { content: '메시지 없음', created_at: chat.chats.created_at };
-            return {
-              ...chat,
-              unread_count: count || 0,
-              last_message: lastMessage.content,
-              last_message_time: lastMessage.created_at,
-            };
-          })
-        );
-        setPersonalChats(personalChatsWithUnread);
-      } catch (error) {
-        Toast.show({
-          type: 'error',
-          text1: '채팅 목록 로드 실패',
-          text2: error.message,
-          position: 'top',
-          visibilityTime: 3000,
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (authLoading || !user) return;
 
     fetchChats();
 
@@ -192,15 +193,25 @@ export default function ChatsScreen() {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        () => fetchChats()
+        (payload) => {
+          if (payload.new.chat_id) {
+            fetchChats();
+          }
+        }
       )
       .subscribe();
+
+    // GroupChatScreen에서 메시지 전송 이벤트 수신
+    chatEmitter.on('messageSent', ({ chat_id }) => {
+      fetchChats();
+    });
 
     return () => {
       supabase.removeChannel(subscription);
       supabase.removeChannel(messageSubscription);
+      chatEmitter.off('messageSent');
     };
-  }, [user]);
+  }, [user, authLoading]);
 
   // 상태에 따른 스타일과 아이콘
   const getStatusStyles = (status) => {
@@ -218,6 +229,15 @@ export default function ChatsScreen() {
 
   // 참여한 채팅이 있는지 확인
   const hasChats = groupChats.length > 0 || personalChats.length > 0;
+
+  if (authLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-white justify-center items-center">
+        <ActivityIndicator size="large" color="#f97316" />
+        <Text className="mt-4 text-neutral-600">인증 로드 중...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -253,12 +273,10 @@ export default function ChatsScreen() {
                 <TouchableOpacity
                   key={tab.id}
                   onPress={() => setActiveTab(tab.id)}
-                  className={`flex-1 py-2 ${activeTab === tab.id ? 'border-b-2 border-neutral-800' : 'border-b border-neutral-200'
-                    }`}
+                  className={`flex-1 py-2 ${activeTab === tab.id ? 'border-b-2 border-neutral-800' : 'border-b border-neutral-200'}`}
                 >
                   <Text
-                    className={`text-base text-center ${activeTab === tab.id ? 'font-bold text-neutral-800' : 'text-neutral-500'
-                      }`}
+                    className={`text-base text-center ${activeTab === tab.id ? 'font-bold text-neutral-800' : 'text-neutral-500'}`}
                   >
                     {tab.label}
                   </Text>
@@ -277,7 +295,7 @@ export default function ChatsScreen() {
                       return (
                         <Link
                           key={chat.chat_id}
-                          href={`/chat/group-chat?chat_id=${chat.chat_id}`}
+                          href={`/chat/${chat.chat_id}`}
                           className="w-full px-4 py-4 flex-row justify-between items-center"
                         >
                           <View className="flex-row justify-between items-center w-full">
@@ -335,15 +353,12 @@ export default function ChatsScreen() {
                   ) : (
                     personalChats.map((chat) => {
                       const otherUser = Array.isArray(chat.profiles)
-                        ? chat.profiles.find((p) => p.id !== user.id) || {
-                          display_name: '알 수 없는 사용자',
-                          avatar_url: null,
-                        }
+                        ? chat.profiles.find((p) => p.id !== user.id) || { display_name: '알 수 없는 사용자', avatar_url: null }
                         : chat.profiles || { display_name: '알 수 없는 사용자', avatar_url: null };
                       return (
                         <Link
                           key={chat.chat_id}
-                          href={`/chat/personal-chat?chat_id=${chat.chat_id}`}
+                          href={`/chat/${chat.chat_id}`}
                           className="w-full px-4 py-4 flex-row justify-between items-center"
                         >
                           <View className="flex-row justify-between items-center w-full">

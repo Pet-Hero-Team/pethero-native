@@ -1,3 +1,5 @@
+import ModalContainer from '@/components/ModalContainer';
+import { useAuth } from '@/hooks/useAuth';
 import { Database } from '@/supabase/database.types';
 import { supabase } from '@/supabase/supabase';
 import { calculateDistance, UserLocation } from '@/utils/calculateDistance';
@@ -93,12 +95,75 @@ const fetchRelatedRescues = async (currentId: string): Promise<RelatedRescue[]> 
     }));
 };
 
+const fetchChatInfo = async (rescueId: string) => {
+    const { data: chatData, error: chatError } = await supabase
+        .from('rescue_chats')
+        .select('chat_id')
+        .eq('rescue_id', rescueId)
+        .maybeSingle();
+
+    if (chatError) {
+        console.error('Chat fetch error:', JSON.stringify(chatError));
+        throw new Error(`채팅방 조회 실패: ${chatError.message}`);
+    }
+
+    if (!chatData) {
+        // 채팅방이 없으면 새로 생성
+        const { data: newChat, error: newChatError } = await supabase
+            .from('chats')
+            .insert({ created_at: new Date().toISOString() })
+            .select('id')
+            .single();
+
+        if (newChatError) {
+            console.error('New chat creation error:', JSON.stringify(newChatError));
+            throw new Error(`채팅방 생성 실패: ${newChatError.message}`);
+        }
+
+        const { error: rescueChatError } = await supabase
+            .from('rescue_chats')
+            .insert({ rescue_id: rescueId, chat_id: newChat.id });
+
+        if (rescueChatError) {
+            console.error('Rescue chat insert error:', JSON.stringify(rescueChatError));
+            throw new Error(`rescue_chats 삽입 실패: ${rescueChatError.message}`);
+        }
+
+        const { count, error: countError } = await supabase
+            .from('chat_participants')
+            .select('id', { count: 'exact' })
+            .eq('chat_id', newChat.id);
+
+        if (countError) {
+            console.error('Participants count error:', JSON.stringify(countError));
+            throw new Error(`참여자 수 조회 실패: ${countError.message}`);
+        }
+
+        return { chatId: newChat.id, participantCount: count || 0 };
+    }
+
+    const { count, error: countError } = await supabase
+        .from('chat_participants')
+        .select('id', { count: 'exact' })
+        .eq('chat_id', chatData.chat_id);
+
+    if (countError) {
+        console.error('Participants count error:', JSON.stringify(countError));
+        throw new Error(`참여자 수 조회 실패: ${countError.message}`);
+    }
+
+    return { chatId: chatData.chat_id, participantCount: count || 0 };
+};
+
 export default function RescuesDetailScreen() {
     const { id } = useLocalSearchParams();
+    const { user } = useAuth();
     const [activeIndex, setActiveIndex] = useState(0);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [modalVisible, setModalVisible] = useState(false);
+    const [chatModalVisible, setChatModalVisible] = useState(false);
     const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+    const [chatInfo, setChatInfo] = useState<{ chatId: string; participantCount: number } | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
     const imageScrollViewRef = useRef<ScrollView>(null);
     const { width } = useWindowDimensions();
@@ -134,6 +199,18 @@ export default function RescuesDetailScreen() {
         queryFn: () => fetchRelatedRescues(id as string),
     });
 
+    useEffect(() => {
+        if (rescue?.id) {
+            fetchChatInfo(rescue.id)
+                .then(setChatInfo)
+                .catch((error) => {
+                    console.error('Chat info fetch error:', error.message);
+                    setChatModalVisible(false);
+                    Alert.alert('오류', '채팅방을 생성하지 못했습니다. 다시 시도해주세요.');
+                });
+        }
+    }, [rescue?.id]);
+
     const handleScroll = (event: any) => {
         const contentOffsetX = event.nativeEvent.contentOffset.x;
         const index = Math.round(contentOffsetX / CARD_WIDTH);
@@ -149,6 +226,48 @@ export default function RescuesDetailScreen() {
     const openModal = (index: number) => {
         setActiveImageIndex(index);
         setModalVisible(true);
+    };
+
+    const handleJoinChat = async () => {
+        if (!user?.id || !chatInfo?.chatId) {
+            Alert.alert('오류', '로그인 상태를 확인하거나 채팅방 정보를 다시 로드해주세요.');
+            return;
+        }
+
+        try {
+            const { data: existingParticipant, error: checkError } = await supabase
+                .from('chat_participants')
+                .select('id')
+                .eq('chat_id', chatInfo.chatId)
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (checkError) {
+                console.error('Participant check error:', JSON.stringify(checkError));
+                throw new Error(`참여자 확인 실패: ${checkError.message}`);
+            }
+
+            if (!existingParticipant) {
+                const { error: participantError } = await supabase
+                    .from('chat_participants')
+                    .insert({
+                        chat_id: chatInfo.chatId,
+                        user_id: user.id,
+                        last_read_at: new Date().toISOString(),
+                    });
+
+                if (participantError) {
+                    console.error('Participant insert error:', JSON.stringify(participantError));
+                    throw new Error(`채팅방 참여 실패: ${participantError.message}`);
+                }
+            }
+
+            setChatModalVisible(false);
+            router.push(`/chat/${chatInfo.chatId}`);
+        } catch (error) {
+            console.error('Join chat error:', error.message);
+            Alert.alert('오류', `채팅방 참여 실패: ${error.message}`);
+        }
     };
 
     if (isLoading) {
@@ -343,11 +462,40 @@ export default function RescuesDetailScreen() {
                 )}
             />
 
+            <ModalContainer isVisible={chatModalVisible} onClose={() => setChatModalVisible(false)}>
+                <View className="p-6">
+                    <Text className="text-xl font-bold text-neutral-800 mb-2">{rescue.title}</Text>
+                    <Text className="text-neutral-600 mb-4" numberOfLines={3}>
+                        {rescue.description || '설명 없음'}
+                    </Text>
+                    <Text className="text-neutral-600 mb-6">
+                        현재 참여자: {chatInfo?.participantCount || 0}명
+                    </Text>
+                    <View className="flex-row justify-between">
+                        <Pressable
+                            onPress={() => setChatModalVisible(false)}
+                            className="flex-1 bg-neutral-200 py-3 rounded-lg mr-2"
+                        >
+                            <Text className="text-neutral-800 text-center font-semibold">취소</Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={handleJoinChat}
+                            className="flex-1 bg-orange-500 py-3 rounded-lg"
+                        >
+                            <Text className="text-white text-center font-semibold">입장하기</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </ModalContainer>
+
             <View className="absolute bottom-10 flex items-center w-full">
-                <View className="bg-orange-500 py-4 px-8 rounded-xl flex-row items-center justify-center">
+                <Pressable
+                    onPress={() => setChatModalVisible(true)}
+                    className="bg-orange-500 py-4 px-8 rounded-xl flex-row items-center justify-center"
+                >
                     <MaterialIcons name="message" size={24} color="white" />
                     <Text className="text-white text-lg font-bold ml-2">구조 요청자와 대화하기</Text>
-                </View>
+                </Pressable>
             </View>
         </>
     );

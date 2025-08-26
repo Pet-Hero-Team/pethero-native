@@ -24,6 +24,7 @@ const MIN = 0;
 const MAX = 1000000;
 const STEP = 10000;
 const UNIT = STEP;
+
 const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
     const { setValue: formSetValue, getValues, trigger: formTrigger } = useFormContext();
     const [isTitleFocused, setIsTitleFocused] = useState(false);
@@ -38,7 +39,6 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
     const mapRef = useRef(null);
     const scrollViewRef = useRef(null);
     const [prevOffset, setPrevOffset] = useState(0);
-
 
     const translateX = useSharedValue(0);
     const color = useSharedValue('#223240');
@@ -208,8 +208,6 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
 
         formSetValue('bounty', newPrice, { shouldValidate: true });
         formTrigger('bounty');
-
-
         triggerHapticsOnDash(offsetX);
     };
 
@@ -219,7 +217,6 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
         if (newValue <= MAX) {
             formSetValue('bounty', newValue, { shouldValidate: true });
             formTrigger('bounty');
-
             const newOffset = offsetForPrice(newValue);
             if (scrollViewRef.current) {
                 scrollViewRef.current.scrollTo({ x: newOffset, animated: true });
@@ -493,6 +490,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
         </View>
     );
 };
+
 const ImageUploadSection = ({ control, setValue, getValues, isLoading, trigger }) => {
     const [images, setImages] = useState(getValues('images') || []);
 
@@ -663,6 +661,7 @@ const TagsSection = ({ control, setValue, getValues, isLoading, trigger }) => {
         </View>
     );
 };
+
 const SubmitButton = ({ disabled, onPress, isLoading }) => (
     <Pressable
         className={`py-4 rounded-xl flex-1 ${disabled || isLoading ? 'bg-gray-300' : 'bg-orange-500'}`}
@@ -938,6 +937,7 @@ export default function RescuesCreateScreen() {
             setIsLoading(false);
         }
     };
+
     const renderProgressBar = () => {
         const progress = ((currentStep + 1) / steps.length) * 100;
         return (
@@ -1033,7 +1033,7 @@ export default function RescuesCreateScreen() {
                                 disabled={isNextDisabled() || isLoading}
                                 style={({ pressed }) => ({ opacity: pressed && !(isNextDisabled() || isLoading) ? 0.7 : 1 })}
                             >
-                                <Text className="text-white  font-semibold text-center">다음</Text>
+                                <Text className="text-white font-semibold text-center">다음</Text>
                             </Pressable>
                         )}
                     </View>
@@ -1042,6 +1042,7 @@ export default function RescuesCreateScreen() {
         </SafeAreaView>
     );
 };
+
 const styles = StyleSheet.create({
     map: {
         ...StyleSheet.absoluteFillObject,
