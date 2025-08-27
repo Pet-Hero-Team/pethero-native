@@ -1,3 +1,4 @@
+
 import { chatEmitter } from '@/app/chat/[id]';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
@@ -7,6 +8,20 @@ import { Link } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, SafeAreaView, Text, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
+
+const getStatusStyles = (status) => {
+  console.log('getStatusStyles called with status:', status);
+  switch (status) {
+    case '수색 중':
+      return { text: '수색 중', color: 'text-slate-700', icon: 'map-search-outline', iconColor: '#334155' };
+    case '수색완료':
+      return { text: '수색완료', color: 'text-orange-500', icon: 'shield-check-outline', iconColor: '#f97316' };
+    case '종료':
+      return { text: '종료', color: 'text-red-500', icon: 'progress-close', iconColor: '#ef4444' };
+    default:
+      return { text: '알 수 없음', color: 'text-neutral-600', icon: null, iconColor: '#000' };
+  }
+};
 
 export default function ChatsScreen() {
   const { user } = useAuth();
@@ -21,20 +36,20 @@ export default function ChatsScreen() {
     { id: 'personal', label: '개인' },
   ];
 
-  // 사용자 로딩 상태 확인
   useEffect(() => {
     if (user !== undefined) {
       setAuthLoading(false);
     }
   }, [user]);
 
-  // 채팅 목록 가져오기
   const fetchChats = async () => {
-    if (authLoading || !user) return;
+    if (authLoading || !user) {
+      console.log('Skipping fetchChats: authLoading or no user');
+      return;
+    }
 
     setLoading(true);
     try {
-      // 그룹 채팅 가져오기
       const { data: groupData, error: groupError } = await supabase
         .from('chat_participants')
         .select(`
@@ -43,6 +58,7 @@ export default function ChatsScreen() {
           chats (
             id,
             created_at,
+            title,
             rescue_chats (
               rescue_id,
               rescues (
@@ -63,38 +79,57 @@ export default function ChatsScreen() {
         throw new Error(`그룹 채팅 로드 실패: ${groupError.message}`);
       }
 
-      // 읽지 않은 메시지 수 및 마지막 메시지
+      console.log('Raw groupData:', JSON.stringify(groupData, null, 2));
+
       const groupChatsWithUnread = await Promise.all(
         (groupData || []).map(async (chat) => {
           const { data: lastMessage, error: messageError } = await supabase
             .from('messages')
-            .select('content, created_at')
+            .select('content, created_at, user_id')
             .eq('chat_id', chat.chat_id)
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle();
+
+          if (messageError) {
+            console.error('Last message error for chat_id', chat.chat_id, ':', JSON.stringify(messageError, null, 2));
+          }
+
+          if (lastMessage?.user_id === user.id) {
+            const { error: updateError } = await supabase
+              .from('chat_participants')
+              .update({ last_read_at: new Date().toISOString() })
+              .eq('chat_id', chat.chat_id)
+              .eq('user_id', user.id);
+            if (updateError) {
+              console.error('Update last_read_at error:', JSON.stringify(updateError, null, 2));
+            }
+          }
+
           const { count, error: countError } = await supabase
             .from('messages')
             .select('id', { count: 'exact' })
             .eq('chat_id', chat.chat_id)
+            .neq('user_id', user.id)
             .gt('created_at', chat.last_read_at || '1970-01-01');
+
           if (countError) {
-            console.error('Unread count error:', JSON.stringify(countError, null, 2));
+            console.error('Unread count error for chat_id', chat.chat_id, ':', JSON.stringify(countError, null, 2));
           }
-          if (messageError) {
-            console.error('Last message error:', JSON.stringify(messageError, null, 2));
-          }
+
           return {
             ...chat,
             unread_count: count || 0,
             last_message: lastMessage?.content || '메시지 없음',
             last_message_time: lastMessage?.created_at || chat.chats.created_at,
+            title: chat.chats.title || chat.chats.rescue_chats?.rescues?.title || '그룹 채팅',
           };
         })
       );
+
+      console.log('Processed groupChats:', JSON.stringify(groupChatsWithUnread, null, 2));
       setGroupChats(groupChatsWithUnread);
 
-      // rescue_chats에서 chat_id 목록 가져오기
       const { data: rescueChatIds, error: rescueChatError } = await supabase
         .from('rescue_chats')
         .select('chat_id');
@@ -104,7 +139,6 @@ export default function ChatsScreen() {
       }
       const rescueChatIdList = (rescueChatIds || []).map((rc) => rc.chat_id);
 
-      // 개인 채팅 가져오기
       let personalQuery = supabase
         .from('chat_participants')
         .select(`
@@ -115,7 +149,8 @@ export default function ChatsScreen() {
             created_at,
             messages (
               content,
-              created_at
+              created_at,
+              user_id
             )
           ),
           profiles!chat_participants_user_id_fkey (id, display_name, avatar_url)
@@ -124,7 +159,7 @@ export default function ChatsScreen() {
         .order('created_at', { foreignTable: 'chats.messages', ascending: false });
 
       if (rescueChatIdList.length > 0) {
-        personalQuery = personalQuery.not('chat_id', 'in', rescueChatIdList);
+        personalQuery = personalQuery.not('chat_id', 'in', `(${rescueChatIdList.join(',')})`);
       }
 
       const { data: personalData, error: personalError } = await personalQuery;
@@ -134,18 +169,33 @@ export default function ChatsScreen() {
         throw new Error(`개인 채팅 로드 실패: ${personalError.message}`);
       }
 
-      // 읽지 않은 메시지 수 및 마지막 메시지
+      console.log('Raw personalData:', JSON.stringify(personalData, null, 2));
+
       const personalChatsWithUnread = await Promise.all(
         (personalData || []).map(async (chat) => {
+          const lastMessage = chat.chats.messages[0] || { content: '메시지 없음', created_at: chat.chats.created_at };
+          if (lastMessage.user_id === user.id) {
+            const { error: updateError } = await supabase
+              .from('chat_participants')
+              .update({ last_read_at: new Date().toISOString() })
+              .eq('chat_id', chat.chat_id)
+              .eq('user_id', user.id);
+            if (updateError) {
+              console.error('Update last_read_at error:', JSON.stringify(updateError, null, 2));
+            }
+          }
+
           const { count, error: countError } = await supabase
             .from('messages')
             .select('id', { count: 'exact' })
             .eq('chat_id', chat.chat_id)
+            .neq('user_id', user.id)
             .gt('created_at', chat.last_read_at || '1970-01-01');
+
           if (countError) {
-            console.error('Unread count error:', JSON.stringify(countError, null, 2));
+            console.error('Unread count error for chat_id', chat.chat_id, ':', JSON.stringify(countError, null, 2));
           }
-          const lastMessage = chat.chats.messages[0] || { content: '메시지 없음', created_at: chat.chats.created_at };
+
           return {
             ...chat,
             unread_count: count || 0,
@@ -154,8 +204,11 @@ export default function ChatsScreen() {
           };
         })
       );
+
+      console.log('Processed personalChats:', JSON.stringify(personalChatsWithUnread, null, 2));
       setPersonalChats(personalChatsWithUnread);
     } catch (error) {
+      console.error('fetchChats error:', error.message);
       Toast.show({
         type: 'error',
         text1: '채팅 목록 로드 실패',
@@ -173,7 +226,6 @@ export default function ChatsScreen() {
 
     fetchChats();
 
-    // 실시간 구독
     const subscription = supabase
       .channel('chat_participants')
       .on(
@@ -184,7 +236,10 @@ export default function ChatsScreen() {
           table: 'chat_participants',
           filter: `user_id=eq.${user.id}`,
         },
-        () => fetchChats()
+        (payload) => {
+          console.log('chat_participants INSERT:', JSON.stringify(payload, null, 2));
+          fetchChats();
+        }
       )
       .subscribe();
 
@@ -194,15 +249,15 @@ export default function ChatsScreen() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         (payload) => {
-          if (payload.new.chat_id) {
-            fetchChats();
-          }
+          console.log('messages INSERT:', JSON.stringify(payload, null, 2));
+          fetchChats();
+          chatEmitter.emit('messageSent', { chat_id: payload.new.chat_id, user_id: payload.new.user_id });
         }
       )
       .subscribe();
 
-    // GroupChatScreen에서 메시지 전송 이벤트 수신
-    chatEmitter.on('messageSent', ({ chat_id }) => {
+    chatEmitter.on('messageSent', ({ chat_id, user_id }) => {
+      console.log('messageSent event:', { chat_id, user_id });
       fetchChats();
     });
 
@@ -213,21 +268,6 @@ export default function ChatsScreen() {
     };
   }, [user, authLoading]);
 
-  // 상태에 따른 스타일과 아이콘
-  const getStatusStyles = (status) => {
-    switch (status) {
-      case '수색 중':
-        return { text: '수색 중', color: 'text-slate-700', icon: 'map-search-outline', iconColor: '#334155' };
-      case '수색완료':
-        return { text: '수색완료', color: 'text-orange-500', icon: 'shield-check-outline', iconColor: '#f97316' };
-      case '종료':
-        return { text: '종료', color: 'text-red-500', icon: 'progress-close', iconColor: '#ef4444' };
-      default:
-        return { text: '', color: 'text-neutral-600', icon: null, iconColor: '#000' };
-    }
-  };
-
-  // 참여한 채팅이 있는지 확인
   const hasChats = groupChats.length > 0 || personalChats.length > 0;
 
   if (authLoading) {
@@ -290,8 +330,8 @@ export default function ChatsScreen() {
                     <Text className="text-neutral-600 text-center mt-4">참여한 그룹 채팅이 없습니다.</Text>
                   ) : (
                     groupChats.map((chat) => {
-                      const rescue = chat.chats.rescue_chats?.rescues;
-                      const status = getStatusStyles(rescue?.status || '');
+                      const rescue = chat.chats.rescue_chats?.rescues || {};
+                      const status = getStatusStyles(rescue.status || '알 수 없음');
                       return (
                         <Link
                           key={chat.chat_id}
@@ -301,7 +341,7 @@ export default function ChatsScreen() {
                           <View className="flex-row justify-between items-center w-full">
                             <View className="flex-row items-center">
                               <Image
-                                source={{ uri: rescue?.rescues_images[0]?.url || 'https://picsum.photos/200/300' }}
+                                source={{ uri: rescue.rescues_images?.[0]?.url || 'https://picsum.photos/200/300' }}
                                 className="w-16 h-16 rounded-full"
                               />
                               <View className="ml-5">
@@ -318,7 +358,7 @@ export default function ChatsScreen() {
                                   )}
                                 </View>
                                 <Text className="text-neutral-800 font-bold text-lg">
-                                  {rescue?.title || '제목 없음'}
+                                  {chat.title}
                                 </Text>
                                 <Text className="text-neutral-600 mt-1 text-sm">
                                   {chat.last_message}

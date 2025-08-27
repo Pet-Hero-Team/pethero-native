@@ -12,5 +12,13 @@ export const supabase = createClient<Database>(
       persistSession: true,
       detectSessionInUrl: false,
     },
+    realtime: {
+      params: {
+        eventsPerSecond: 3,
+        timeout: 60000,
+        heartbeatIntervalMs: 10000,
+        reconnectAfterMs: (tries) => Math.min(tries * 1000, 10000),
+      },
+    },
   }
 );

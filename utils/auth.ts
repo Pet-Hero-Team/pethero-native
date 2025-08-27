@@ -93,27 +93,8 @@ export async function signInWithApple(): Promise<void> {
 
     console.log("Supabase response:", { user: data.user, session: data.session });
 
-    const user: User | null = data.user;
-    if (!user) throw new Error("사용자 정보 없음");
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-
-    if (!profile && !profileError) {
-      const fullName = credential.fullName
-        ? `${credential.fullName.givenName || ""} ${credential.fullName.familyName || ""}`.trim()
-        : null;
-      const { error: insertError } = await supabase.from("profiles").insert({
-        id: user.id,
-        username: user.email || `apple_${user.id.slice(0, 8)}`,
-        full_name: fullName || user.user_metadata?.name || null,
-        avatar_url: user.user_metadata?.avatar_url || null,
-      });
-      if (insertError) throw new Error(`프로필 생성 실패: ${insertError.message}`);
-    }
+    // 프로필 생성 및 조회 로직을 제거합니다.
+    // 이 작업은 DB 트리거와 _layout.tsx의 AuthStatusManager가 담당합니다.
   } catch (error) {
     console.error("Apple 로그인 전체 에러:", (error as Error).message);
     if ((error as any).code === "ERR_REQUEST_CANCELED") {

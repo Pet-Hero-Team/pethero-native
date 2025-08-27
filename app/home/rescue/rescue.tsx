@@ -24,7 +24,6 @@ const MIN = 0;
 const MAX = 1000000;
 const STEP = 10000;
 const UNIT = STEP;
-
 const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
     const { setValue: formSetValue, getValues, trigger: formTrigger } = useFormContext();
     const [isTitleFocused, setIsTitleFocused] = useState(false);
@@ -39,6 +38,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
     const mapRef = useRef(null);
     const scrollViewRef = useRef(null);
     const [prevOffset, setPrevOffset] = useState(0);
+
 
     const translateX = useSharedValue(0);
     const color = useSharedValue('#223240');
@@ -208,6 +208,8 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
 
         formSetValue('bounty', newPrice, { shouldValidate: true });
         formTrigger('bounty');
+
+
         triggerHapticsOnDash(offsetX);
     };
 
@@ -217,6 +219,7 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
         if (newValue <= MAX) {
             formSetValue('bounty', newValue, { shouldValidate: true });
             formTrigger('bounty');
+
             const newOffset = offsetForPrice(newValue);
             if (scrollViewRef.current) {
                 scrollViewRef.current.scrollTo({ x: newOffset, animated: true });
@@ -490,7 +493,6 @@ const FormSection = ({ activeField, control, errors, trigger, isLoading }) => {
         </View>
     );
 };
-
 const ImageUploadSection = ({ control, setValue, getValues, isLoading, trigger }) => {
     const [images, setImages] = useState(getValues('images') || []);
 
@@ -661,7 +663,6 @@ const TagsSection = ({ control, setValue, getValues, isLoading, trigger }) => {
         </View>
     );
 };
-
 const SubmitButton = ({ disabled, onPress, isLoading }) => (
     <Pressable
         className={`py-4 rounded-xl flex-1 ${disabled || isLoading ? 'bg-gray-300' : 'bg-orange-500'}`}
@@ -771,7 +772,6 @@ export default function RescuesCreateScreen() {
                 throw new Error('로그인이 필요합니다.');
             }
 
-            // 인증 상태 확인
             const { data: authData, error: authError } = await supabase.auth.getSession();
             if (authError || !authData.session) {
                 throw new Error(`인증 실패: ${authError?.message || '세션 정보 없음'}`);
@@ -781,7 +781,17 @@ export default function RescuesCreateScreen() {
                 throw new Error('사용자 ID 불일치');
             }
 
-            // 저장 프로시저 호출
+            console.log('Submitting data:', {
+                p_user_id: user.id,
+                p_title: data.title,
+                p_description: data.details || null,
+                p_animal_type: data.category,
+                p_latitude: data.location?.latitude || 0,
+                p_longitude: data.location?.longitude || 0,
+                p_address: data.location?.address || '',
+                p_bounty: Number(data.bounty) || 0,
+            });
+
             const { data: createData, error: createError } = await supabase
                 .rpc('create_rescue_with_chat', {
                     p_user_id: user.id,
@@ -791,7 +801,7 @@ export default function RescuesCreateScreen() {
                     p_latitude: data.location?.latitude || 0,
                     p_longitude: data.location?.longitude || 0,
                     p_address: data.location?.address || '',
-                    p_bounty: data.bounty || 0,
+                    p_bounty: Number(data.bounty) || 0,
                 });
             if (createError) {
                 console.error(`Create rescue with chat error: ${JSON.stringify(createError)}`);
@@ -799,6 +809,18 @@ export default function RescuesCreateScreen() {
             }
             const { rescue_id, chat_id } = createData[0];
             console.log(`Rescue inserted: ${rescue_id}, Chat inserted: ${chat_id}`);
+
+            // 채팅방 생성 확인
+            const { data: chatData, error: chatError } = await supabase
+                .from('chats')
+                .select('id, title, created_at')
+                .eq('id', chat_id)
+                .single();
+            if (chatError || !chatData) {
+                console.error(`Chat verification error: ${JSON.stringify(chatError)}`);
+                throw new Error(`채팅방 확인 실패: ${chatError?.message || '채팅방 없음'}`);
+            }
+            console.log(`Chat verified: ${JSON.stringify(chatData)}`);
 
             // 이미지 업로드
             const batchSize = 3;
@@ -809,24 +831,20 @@ export default function RescuesCreateScreen() {
                 const batchPromises = batch.map(async (uri, index) => {
                     const globalIndex = i + index;
                     console.log(`Processing image ${globalIndex}: ${uri}`);
-
                     const manipResult = await ImageManipulator.manipulateAsync(
                         uri,
                         [{ resize: { width: 800 } }],
                         { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
                     );
                     console.log(`Compressed image: ${manipResult.uri}, size: ${manipResult.width}x${manipResult.height}`);
-
                     const response = await fetch(manipResult.uri);
                     const arrayBuffer = await response.arrayBuffer();
                     if (arrayBuffer.byteLength === 0) {
                         throw new Error(`이미지 데이터가 비어 있습니다: ${uri}`);
                     }
-
                     const contentType = 'image/jpeg';
                     const fileName = `rescue_${user.id}_${Date.now()}_${globalIndex}.jpg`;
                     console.log(`Uploading ${fileName}`);
-
                     Toast.show({
                         type: 'info',
                         text1: `이미지 업로드 중 (${globalIndex + 1}/${data.images.length})`,
@@ -834,7 +852,6 @@ export default function RescuesCreateScreen() {
                         position: 'top',
                         visibilityTime: 1500,
                     });
-
                     const { data: uploadData, error: uploadError } = await supabase.storage
                         .from('rescues')
                         .upload(fileName, arrayBuffer, { contentType });
@@ -843,7 +860,6 @@ export default function RescuesCreateScreen() {
                         throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
                     }
                     console.log(`Upload success: ${fileName}`);
-
                     const { data: urlData } = supabase.storage
                         .from('rescues')
                         .getPublicUrl(fileName);
@@ -853,7 +869,6 @@ export default function RescuesCreateScreen() {
                     console.log(`Public URL: ${urlData.publicUrl}`);
                     return urlData.publicUrl;
                 });
-
                 const batchUrls = await Promise.all(batchPromises);
                 imageUrls.push(...batchUrls);
                 console.log(`Batch ${i / batchSize} completed in ${Date.now() - batchStartTime}ms`);
@@ -929,7 +944,7 @@ export default function RescuesCreateScreen() {
             Toast.show({
                 type: 'error',
                 text1: '구조 제보 등록 실패',
-                text2: (error as Error).message,
+                text2: error.message,
                 position: 'top',
                 visibilityTime: 3000,
             });
@@ -937,7 +952,6 @@ export default function RescuesCreateScreen() {
             setIsLoading(false);
         }
     };
-
     const renderProgressBar = () => {
         const progress = ((currentStep + 1) / steps.length) * 100;
         return (
@@ -1033,7 +1047,7 @@ export default function RescuesCreateScreen() {
                                 disabled={isNextDisabled() || isLoading}
                                 style={({ pressed }) => ({ opacity: pressed && !(isNextDisabled() || isLoading) ? 0.7 : 1 })}
                             >
-                                <Text className="text-white font-semibold text-center">다음</Text>
+                                <Text className="text-white  font-semibold text-center">다음</Text>
                             </Pressable>
                         )}
                     </View>
@@ -1042,7 +1056,6 @@ export default function RescuesCreateScreen() {
         </SafeAreaView>
     );
 };
-
 const styles = StyleSheet.create({
     map: {
         ...StyleSheet.absoluteFillObject,

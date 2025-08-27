@@ -12,6 +12,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import ImageViewer from 'react-native-image-viewing';
 
+type User = Database['public']['Tables']['profiles']['Row'];
+
 type Rescue = Database['public']['Tables']['rescues']['Row'] & {
     rescues_images: Database['public']['Tables']['rescues_images']['Row'][];
     rescue_tags: { tag_name: string }[];
@@ -95,7 +97,13 @@ const fetchRelatedRescues = async (currentId: string): Promise<RelatedRescue[]> 
     }));
 };
 
-const fetchChatInfo = async (rescueId: string) => {
+const fetchChatInfo = async (rescueId: string, user: User | null) => { // user를 파라미터로 받음
+    // const { user } = useAuth(); // Hook 호출 삭제
+
+    if (!user) {
+        throw new Error("사용자 정보가 없어 채팅방 정보를 가져올 수 없습니다.");
+    }
+
     const { data: chatData, error: chatError } = await supabase
         .from('rescue_chats')
         .select('chat_id')
@@ -107,52 +115,46 @@ const fetchChatInfo = async (rescueId: string) => {
         throw new Error(`채팅방 조회 실패: ${chatError.message}`);
     }
 
+    let chatId: string;
     if (!chatData) {
-        // 채팅방이 없으면 새로 생성
+        // 채팅방이 없을 경우 새로 생성하는 로직
+        const { data: rescueData, error: rescueError } = await supabase
+            .from('rescues')
+            .select('id, title, user_id')
+            .eq('id', rescueId)
+            .single();
+
+        if (rescueError || !rescueData) {
+            throw new Error(`구조 요청 확인 실패: ${rescueError?.message || '구조 없음'}`);
+        }
+
         const { data: newChat, error: newChatError } = await supabase
             .from('chats')
-            .insert({ created_at: new Date().toISOString() })
+            .insert({ title: `${rescueData.title}의 그룹 채팅` })
             .select('id')
             .single();
 
-        if (newChatError) {
-            console.error('New chat creation error:', JSON.stringify(newChatError));
+        if (newChatError || !newChat) {
             throw new Error(`채팅방 생성 실패: ${newChatError.message}`);
         }
+        chatId = newChat.id;
 
-        const { error: rescueChatError } = await supabase
-            .from('rescue_chats')
-            .insert({ rescue_id: rescueId, chat_id: newChat.id });
-
-        if (rescueChatError) {
-            console.error('Rescue chat insert error:', JSON.stringify(rescueChatError));
-            throw new Error(`rescue_chats 삽입 실패: ${rescueChatError.message}`);
-        }
-
-        const { count, error: countError } = await supabase
-            .from('chat_participants')
-            .select('id', { count: 'exact' })
-            .eq('chat_id', newChat.id);
-
-        if (countError) {
-            console.error('Participants count error:', JSON.stringify(countError));
-            throw new Error(`참여자 수 조회 실패: ${countError.message}`);
-        }
-
-        return { chatId: newChat.id, participantCount: count || 0 };
+        await supabase.from('rescue_chats').insert({ rescue_id: rescueId, chat_id: chatId });
+        await supabase.from('chat_participants').insert({ chat_id: chatId, user_id: rescueData.user_id });
+    } else {
+        chatId = chatData.chat_id;
     }
 
     const { count, error: countError } = await supabase
         .from('chat_participants')
-        .select('id', { count: 'exact' })
-        .eq('chat_id', chatData.chat_id);
+        .select('user_id', { count: 'exact' })
+        .eq('chat_id', chatId);
 
     if (countError) {
-        console.error('Participants count error:', JSON.stringify(countError));
         throw new Error(`참여자 수 조회 실패: ${countError.message}`);
     }
 
-    return { chatId: chatData.chat_id, participantCount: count || 0 };
+    return { chatId, participantCount: count || 0 };
 };
 
 export default function RescuesDetailScreen() {
@@ -200,16 +202,16 @@ export default function RescuesDetailScreen() {
     });
 
     useEffect(() => {
-        if (rescue?.id) {
-            fetchChatInfo(rescue.id)
+        if (rescue?.id && user) { // user가 있을 때만 실행
+            fetchChatInfo(rescue.id, user) // user를 파라미터로 전달
                 .then(setChatInfo)
                 .catch((error) => {
                     console.error('Chat info fetch error:', error.message);
                     setChatModalVisible(false);
-                    Alert.alert('오류', '채팅방을 생성하지 못했습니다. 다시 시도해주세요.');
+                    Alert.alert('오류', '채팅방 정보를 불러오지 못했습니다.');
                 });
         }
-    }, [rescue?.id]);
+    }, [rescue?.id, user]); // 종속성 배열에 user 추가
 
     const handleScroll = (event: any) => {
         const contentOffsetX = event.nativeEvent.contentOffset.x;
@@ -237,7 +239,7 @@ export default function RescuesDetailScreen() {
         try {
             const { data: existingParticipant, error: checkError } = await supabase
                 .from('chat_participants')
-                .select('id')
+                .select('user_id') // 수정된 부분
                 .eq('chat_id', chatInfo.chatId)
                 .eq('user_id', user.id)
                 .maybeSingle();

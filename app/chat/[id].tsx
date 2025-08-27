@@ -1,3 +1,4 @@
+// GroupChatScreen.tsx
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import {
@@ -13,7 +14,7 @@ import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { router, useLocalSearchParams } from 'expo-router';
-import mitt from 'mitt'; // 이벤트 발행/구독을 위한 라이브러리 추가
+import mitt from 'mitt';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -29,8 +30,22 @@ import {
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 
-// 글로벌 이벤트 이미터 생성
 const emitter = mitt();
+export const chatEmitter = emitter;
+
+const getStatusStyles = (status) => {
+    console.log('getStatusStyles called with status:', status);
+    switch (status) {
+        case '수색 중':
+            return { text: '수색 중', color: 'text-slate-700', icon: 'map-search-outline', iconColor: '#334155' };
+        case '수색완료':
+            return { text: '수색완료', color: 'text-orange-500', icon: 'shield-check-outline', iconColor: '#f97316' };
+        case '종료':
+            return { text: '종료', color: 'text-red-500', icon: 'progress-close', iconColor: '#ef4444' };
+        default:
+            return { text: '알 수 없음', color: 'text-neutral-600', icon: null, iconColor: '#000' };
+    }
+};
 
 export default function GroupChatScreen() {
     const { user } = useAuth();
@@ -41,24 +56,24 @@ export default function GroupChatScreen() {
     const [currentSnapIndex, setCurrentSnapIndex] = useState(-1);
     const [galleryImages, setGalleryImages] = useState([]);
     const [permissionStatus, setPermissionStatus] = useState(null);
-    const [rescueData, setRescueData] = useState(null);
+    const [rescueData, setRescueData] = useState({ title: '채팅방', status: null, rescues_images: [] });
     const [loading, setLoading] = useState(true);
     const [authLoading, setAuthLoading] = useState(true);
+    const [subscriptionStatus, setSubscriptionStatus] = useState('INITIAL');
 
     const sheetRef = useRef(null);
     const flatListRef = useRef(null);
+    const subscriptionRef = useRef(null);
     const { height, width: screenWidth } = useWindowDimensions();
 
     const snapPoints = useMemo(() => ['60%', '90%'], []);
 
-    // 사용자 로딩 상태 확인
     useEffect(() => {
         if (user !== undefined) {
             setAuthLoading(false);
         }
     }, [user]);
 
-    // 갤러리 권한 및 이미지 로드
     useEffect(() => {
         (async () => {
             const { status } = await MediaLibrary.requestPermissionsAsync();
@@ -78,14 +93,17 @@ export default function GroupChatScreen() {
         setGalleryImages(assets);
     };
 
-    // 채팅방 정보 및 메시지 가져오기
     useEffect(() => {
         if (authLoading || !user || !id) return;
+
+        console.log('useEffect triggered for fetchChatData');
 
         const fetchChatData = async () => {
             setLoading(true);
             try {
-                // 채팅방 정보 가져오기
+                const { data: authUid } = await supabase.rpc('get_auth_uid');
+                console.log('Current auth.uid():', authUid);
+
                 const { data: chatData, error: chatError } = await supabase
                     .from('chats')
                     .select(`
@@ -106,9 +124,9 @@ export default function GroupChatScreen() {
                     console.error('Chat fetch error:', JSON.stringify(chatError, null, 2));
                     throw new Error(`채팅방 정보 로드 실패: ${chatError.message}`);
                 }
-                setRescueData(chatData.rescue_chats?.rescues);
+                console.log('Fetched chat data:', JSON.stringify(chatData, null, 2));
+                setRescueData(chatData.rescue_chats?.rescues || { title: '채팅방', status: null, rescues_images: [] });
 
-                // 메시지 가져오기
                 const { data: messageData, error: messageError } = await supabase
                     .from('messages')
                     .select(`
@@ -125,9 +143,13 @@ export default function GroupChatScreen() {
 
                 if (messageError) {
                     console.error('Messages fetch error:', JSON.stringify(messageError, null, 2));
+                    if (messageError.code === '42501') {
+                        console.log('Permission denied for profiles table in message fetch');
+                    }
                     throw new Error(`메시지 로드 실패: ${messageError.message}`);
                 }
 
+                console.log('Initial messages:', JSON.stringify(messageData, null, 2));
                 setMessages(
                     messageData.map((msg) => ({
                         id: msg.id,
@@ -137,12 +159,11 @@ export default function GroupChatScreen() {
                         replyTo: msg.reply_to_id
                             ? messageData.find((m) => m.id === msg.reply_to_id)?.content
                             : '',
-                        user: msg.profiles,
+                        user: msg.profiles || { id: msg.user_id, display_name: '알 수 없는 사용자', avatar_url: null },
                         created_at: msg.created_at,
                     }))
                 );
 
-                // last_read_at 업데이트
                 await supabase
                     .from('chat_participants')
                     .update({ last_read_at: new Date().toISOString() })
@@ -163,59 +184,80 @@ export default function GroupChatScreen() {
 
         fetchChatData();
 
-        // 실시간 메시지 구독
-        const messageSubscription = supabase
-            .channel(`messages:chat_id=${id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'messages',
-                    filter: `chat_id=eq.${id}`,
-                },
-                async (payload) => {
-                    const newMessage = payload.new;
-                    const { data: profile, error: profileError } = await supabase
-                        .from('profiles')
-                        .select('id, display_name, avatar_url')
-                        .eq('id', newMessage.user_id)
-                        .single();
+        const channel = supabase.channel(`chat:${id}`, {
+            config: { broadcast: { self: true } },
+        });
+        subscriptionRef.current = channel
+            .on('broadcast', { event: 'message' }, async (payload) => {
+                console.log('Broadcast message received:', JSON.stringify(payload, null, 2));
+                const message = payload.payload;
 
-                    if (profileError) {
-                        console.error('Profile fetch error:', JSON.stringify(profileError, null, 2));
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('id, display_name, avatar_url')
+                    .eq('id', message.user_id)
+                    .single();
+
+                if (profileError) {
+                    console.error('Profile fetch error in broadcast:', JSON.stringify(profileError, null, 2));
+                    if (profileError.code === '42501') {
+                        console.log('Permission denied for profiles table in broadcast');
                     }
+                }
 
-                    setMessages((prev) => [
-                        ...prev,
-                        {
-                            id: newMessage.id,
-                            fromMe: newMessage.user_id === user.id,
-                            text: newMessage.content,
-                            image_urls: newMessage.image_urls || [],
-                            replyTo: newMessage.reply_to_id
-                                ? prev.find((m) => m.id === newMessage.reply_to_id)?.text
-                                : '',
-                            user: profile || { id: newMessage.user_id, display_name: '알 수 없는 사용자', avatar_url: null },
-                            created_at: newMessage.created_at,
-                        },
-                    ]);
+                const formattedMessage = {
+                    id: message.id,
+                    fromMe: message.user_id === user.id,
+                    text: message.content,
+                    image_urls: message.image_urls || [],
+                    replyTo: message.reply_to_id
+                        ? messages.find((m) => m.id === message.reply_to_id)?.text
+                        : '',
+                    user: profile || { id: message.user_id, display_name: '알 수 없는 사용자', avatar_url: null },
+                    created_at: message.created_at,
+                };
 
+                console.log('Formatted message:', JSON.stringify(formattedMessage, null, 2));
+
+                setMessages((prev) => {
+                    if (prev.some((m) => m.id === formattedMessage.id)) {
+                        console.log('Duplicate message ignored:', formattedMessage.id);
+                        return prev;
+                    }
+                    const updatedMessages = [...prev, formattedMessage];
+                    console.log('Updated messages:', JSON.stringify(updatedMessages, null, 2));
+                    setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                        console.log('Scrolled to end');
+                    }, 100);
+                    return updatedMessages;
+                });
+
+                if (message.user_id === user.id) {
                     await supabase
                         .from('chat_participants')
                         .update({ last_read_at: new Date().toISOString() })
                         .eq('chat_id', id)
                         .eq('user_id', user.id);
                 }
-            )
-            .subscribe();
+
+                chatEmitter.emit('messageSent', { chat_id: id, user_id: message.user_id });
+            })
+            .subscribe((status, err) => {
+                console.log('Broadcast subscription status:', status, err ? `Error: ${JSON.stringify(err)}` : '');
+                setSubscriptionStatus(status);
+                if (status === 'CLOSED' || status === 'TIMED_OUT') {
+                    console.warn('Broadcast subscription closed or timed out. Reconnecting...');
+                    setTimeout(() => channel.subscribe(), 1000);
+                }
+            });
 
         return () => {
-            supabase.removeChannel(messageSubscription);
+            console.log('Cleaning up broadcast subscription');
+            supabase.removeChannel(channel);
         };
     }, [user, id, authLoading]);
 
-    // 메시지 전송
     const sendMessage = async () => {
         if (!value.trim() && selectedAssets.length === 0) return;
 
@@ -254,23 +296,6 @@ export default function GroupChatScreen() {
             if (insertError) {
                 throw new Error(`메시지 전송 실패: ${insertError.message}`);
             }
-
-            // 즉시 메시지 상태 업데이트
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: data.id,
-                    fromMe: true,
-                    text: data.content,
-                    image_urls: data.image_urls || [],
-                    replyTo: data.reply_to_id ? prev.find((m) => m.id === data.reply_to_id)?.text : '',
-                    user: { id: user.id, display_name: user.display_name || '나', avatar_url: user.avatar_url || null },
-                    created_at: data.created_at,
-                },
-            ]);
-
-            // ChatsScreen 갱신 트리거
-            emitter.emit('messageSent', { chat_id: id });
 
             setValue('');
             setSelectedAssets([]);
@@ -371,8 +396,9 @@ export default function GroupChatScreen() {
         [selectedAssets, screenWidth]
     );
 
-    const renderMessageItem = ({ item }) => (
-        item.fromMe ? (
+    const renderMessageItem = ({ item }) => {
+        console.log('Rendering message:', item.id, item.text);
+        return item.fromMe ? (
             <View className="items-end mb-3">
                 <View className="bg-neutral-800 rounded-xl px-4 py-3 max-w-[80%]">
                     {item.replyTo && (
@@ -405,8 +431,8 @@ export default function GroupChatScreen() {
                     ))}
                 </View>
             </View>
-        )
-    );
+        );
+    };
 
     const renderBackdrop = useCallback(
         (props) => (
@@ -414,19 +440,6 @@ export default function GroupChatScreen() {
         ),
         []
     );
-
-    const getStatusStyles = (status) => {
-        switch (status) {
-            case '수색 중':
-                return { text: '수색 중', color: 'text-slate-700', icon: 'map-search-outline', iconColor: '#334155' };
-            case '수색완료':
-                return { text: '수색완료', color: 'text-orange-500', icon: 'shield-check-outline', iconColor: '#f97316' };
-            case '종료':
-                return { text: '종료', color: 'text-red-500', icon: 'progress-close', iconColor: '#ef4444' };
-            default:
-                return { text: '', color: 'text-neutral-600', icon: null, iconColor: '#000' };
-        }
-    };
 
     if (authLoading) {
         return (
@@ -454,7 +467,7 @@ export default function GroupChatScreen() {
                         <Ionicons name="chevron-back" size={24} color="#222" />
                     </TouchableOpacity>
                     <Image
-                        source={{ uri: rescueData?.rescues_images[0]?.url || 'https://picsum.photos/200/300' }}
+                        source={{ uri: rescueData?.rescues_images?.[0]?.url || 'https://picsum.photos/200/300' }}
                         className="w-10 h-10 rounded-full ml-4"
                     />
                     <View className="flex-1 ml-4">
@@ -486,7 +499,15 @@ export default function GroupChatScreen() {
                     data={messages}
                     keyExtractor={(item) => item.id}
                     renderItem={renderMessageItem}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    onContentSizeChange={() => {
+                        console.log('Content size changed, scrolling to end');
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                    }}
+                    onLayout={() => {
+                        console.log('FlatList layout triggered, scrolling to end');
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                    }}
+                    extraData={messages}
                 />
                 <View className="flex-row items-center bg-neutral-100 rounded-full px-5 py-3 mx-4 mb-4">
                     <TouchableOpacity
@@ -544,8 +565,7 @@ export default function GroupChatScreen() {
                             </TouchableOpacity>
                             <View className="flex-1 flex-row justify-end">
                                 <TouchableOpacity
-                                    className={`rounded-lg size-8 items-center justify-center ${selectedAssets.length === 0 ? 'bg-neutral-300' : 'bg-neutral-700'
-                                        }`}
+                                    className={`rounded-lg size-8 items-center justify-center ${selectedAssets.length === 0 ? 'bg-neutral-300' : 'bg-neutral-700'}`}
                                     disabled={selectedAssets.length === 0}
                                     onPress={confirmSelectImages}
                                 >
@@ -572,6 +592,3 @@ export default function GroupChatScreen() {
         </GestureHandlerRootView>
     );
 }
-
-// ChatsScreen에서 사용할 이벤트 리스너
-export const chatEmitter = emitter;
