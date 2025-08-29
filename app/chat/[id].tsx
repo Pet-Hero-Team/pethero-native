@@ -1,4 +1,5 @@
-// GroupChatScreen.tsx
+// app/chat/[id].tsx
+
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import {
@@ -8,18 +9,20 @@ import {
     Fontisto,
     Ionicons,
     MaterialCommunityIcons,
-    Octicons,
+    Octicons
 } from '@expo/vector-icons';
 import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 import { router, useLocalSearchParams } from 'expo-router';
-import mitt from 'mitt';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     FlatList,
     Image,
+    Keyboard,
     SafeAreaView,
     Text,
     TextInput,
@@ -30,11 +33,26 @@ import {
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Toast from 'react-native-toast-message';
 
-const emitter = mitt();
-export const chatEmitter = emitter;
+// --- 타입 정의 ---
+type Profile = { id: string; display_name: string; avatar_url: string; };
+type RawMessage = {
+    id: number;
+    user_id: string;
+    content: string | null;
+    image_urls: string[] | null;
+    created_at: string;
+    profiles: Profile | null;
+};
+type FormattedMessage = {
+    id: number;
+    fromMe: boolean;
+    text: string | null;
+    image_urls: string[] | null;
+    user: Profile;
+    created_at: string;
+};
 
 const getStatusStyles = (status) => {
-    console.log('getStatusStyles called with status:', status);
     switch (status) {
         case '수색 중':
             return { text: '수색 중', color: 'text-slate-700', icon: 'map-search-outline', iconColor: '#334155' };
@@ -43,273 +61,233 @@ const getStatusStyles = (status) => {
         case '종료':
             return { text: '종료', color: 'text-red-500', icon: 'progress-close', iconColor: '#ef4444' };
         default:
-            return { text: '알 수 없음', color: 'text-neutral-600', icon: null, iconColor: '#000' };
+            return { text: '알 수 없음', color: 'text-neutral-600', icon: 'progress-question', iconColor: '#525252' };
     }
 };
 
 export default function GroupChatScreen() {
     const { user } = useAuth();
-    const { id } = useLocalSearchParams();
-    const [messages, setMessages] = useState([]);
+    const { id: chatId } = useLocalSearchParams() as { id: string };
+
+    const [messages, setMessages] = useState<FormattedMessage[]>([]);
     const [value, setValue] = useState('');
-    const [selectedAssets, setSelectedAssets] = useState([]);
-    const [currentSnapIndex, setCurrentSnapIndex] = useState(-1);
-    const [galleryImages, setGalleryImages] = useState([]);
-    const [permissionStatus, setPermissionStatus] = useState(null);
-    const [rescueData, setRescueData] = useState({ title: '채팅방', status: null, rescues_images: [] });
+    const [rescueData, setRescueData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [authLoading, setAuthLoading] = useState(true);
-    const [subscriptionStatus, setSubscriptionStatus] = useState('INITIAL');
+    const [selectedAssets, setSelectedAssets] = useState<MediaLibrary.Asset[]>([]);
+    const [galleryImages, setGalleryImages] = useState<MediaLibrary.Asset[]>([]);
+    const [permissionStatus, setPermissionStatus] = useState<MediaLibrary.PermissionStatus | null>(null);
+    const [currentSnapIndex, setCurrentSnapIndex] = useState(-1);
 
-    const sheetRef = useRef(null);
-    const flatListRef = useRef(null);
-    const subscriptionRef = useRef(null);
-    const { height, width: screenWidth } = useWindowDimensions();
-
+    const sheetRef = useRef<BottomSheet>(null);
+    const flatListRef = useRef<FlatList>(null);
+    const { width: screenWidth, height } = useWindowDimensions();
     const snapPoints = useMemo(() => ['60%', '90%'], []);
 
-    useEffect(() => {
-        if (user !== undefined) {
-            setAuthLoading(false);
-        }
-    }, [user]);
+    // DB 데이터를 UI용 데이터로 변환하는 함수
+    const formatMessage = (rawMsg: RawMessage, currentUserId: string): FormattedMessage => {
+        return {
+            id: rawMsg.id,
+            fromMe: rawMsg.user_id === currentUserId,
+            text: rawMsg.content,
+            image_urls: rawMsg.image_urls,
+            user: rawMsg.profiles || { id: rawMsg.user_id, display_name: '알 수 없는 사용자', avatar_url: null },
+            created_at: rawMsg.created_at,
+        };
+    };
 
     useEffect(() => {
         (async () => {
-            const { status } = await MediaLibrary.requestPermissionsAsync();
-            setPermissionStatus(status);
-            if (status === 'granted') {
-                loadGalleryImages();
+            const mediaStatus = await MediaLibrary.requestPermissionsAsync();
+            setPermissionStatus(mediaStatus.status);
+            if (mediaStatus.status === 'granted') {
+                const { assets } = await MediaLibrary.getAssetsAsync({ first: 100, mediaType: ['photo'], sortBy: ['creationTime'] });
+                setGalleryImages(assets);
             }
         })();
     }, []);
 
-    const loadGalleryImages = async () => {
-        const { assets } = await MediaLibrary.getAssetsAsync({
-            first: 100,
-            mediaType: ['photo'],
-            sortBy: ['creationTime'],
-        });
-        setGalleryImages(assets);
-    };
-
     useEffect(() => {
-        if (authLoading || !user || !id) return;
+        if (!user || !chatId) return;
 
-        console.log('useEffect triggered for fetchChatData');
-
-        const fetchChatData = async () => {
+        const fetchInitialData = async () => {
             setLoading(true);
             try {
-                const { data: authUid } = await supabase.rpc('get_auth_uid');
-                console.log('Current auth.uid():', authUid);
+                const [chatRes, messagesRes] = await Promise.all([
+                    supabase.from('chats').select('*, rescue_chats(*, rescues(*, rescues_images(url)))').eq('id', chatId).single(),
+                    supabase.from('messages').select('*, profiles(id, display_name, avatar_url)').eq('chat_id', chatId).order('created_at', { ascending: true })
+                ]);
 
-                const { data: chatData, error: chatError } = await supabase
-                    .from('chats')
-                    .select(`
-            id,
-            rescue_chats (
-              rescue_id,
-              rescues (
-                title,
-                status,
-                rescues_images (url)
-              )
-            )
-          `)
-                    .eq('id', id)
-                    .single();
+                if (chatRes.error) throw chatRes.error;
+                if (messagesRes.error) throw messagesRes.error;
 
-                if (chatError) {
-                    console.error('Chat fetch error:', JSON.stringify(chatError, null, 2));
-                    throw new Error(`채팅방 정보 로드 실패: ${chatError.message}`);
-                }
-                console.log('Fetched chat data:', JSON.stringify(chatData, null, 2));
-                setRescueData(chatData.rescue_chats?.rescues || { title: '채팅방', status: null, rescues_images: [] });
+                if (chatRes.data?.rescue_chats?.[0]?.rescues) setRescueData(chatRes.data.rescue_chats[0].rescues);
+                setMessages((messagesRes.data || []).map(msg => formatMessage(msg, user.id)));
 
-                const { data: messageData, error: messageError } = await supabase
-                    .from('messages')
-                    .select(`
-            id,
-            content,
-            image_urls,
-            user_id,
-            created_at,
-            reply_to_id,
-            profiles (id, display_name, avatar_url)
-          `)
-                    .eq('chat_id', id)
-                    .order('created_at', { ascending: true });
-
-                if (messageError) {
-                    console.error('Messages fetch error:', JSON.stringify(messageError, null, 2));
-                    if (messageError.code === '42501') {
-                        console.log('Permission denied for profiles table in message fetch');
-                    }
-                    throw new Error(`메시지 로드 실패: ${messageError.message}`);
-                }
-
-                console.log('Initial messages:', JSON.stringify(messageData, null, 2));
-                setMessages(
-                    messageData.map((msg) => ({
-                        id: msg.id,
-                        fromMe: msg.user_id === user.id,
-                        text: msg.content,
-                        image_urls: msg.image_urls || [],
-                        replyTo: msg.reply_to_id
-                            ? messageData.find((m) => m.id === msg.reply_to_id)?.content
-                            : '',
-                        user: msg.profiles || { id: msg.user_id, display_name: '알 수 없는 사용자', avatar_url: null },
-                        created_at: msg.created_at,
-                    }))
-                );
-
-                await supabase
-                    .from('chat_participants')
-                    .update({ last_read_at: new Date().toISOString() })
-                    .eq('chat_id', id)
-                    .eq('user_id', user.id);
             } catch (error) {
-                Toast.show({
-                    type: 'error',
-                    text1: '데이터 로드 실패',
-                    text2: error.message,
-                    position: 'top',
-                    visibilityTime: 3000,
-                });
+                Toast.show({ type: 'error', text1: '데이터 로드 실패', text2: error.message });
             } finally {
                 setLoading(false);
             }
         };
+        fetchInitialData();
 
-        fetchChatData();
-
-        const channel = supabase.channel(`chat:${id}`, {
-            config: { broadcast: { self: true } },
-        });
-        subscriptionRef.current = channel
-            .on('broadcast', { event: 'message' }, async (payload) => {
-                console.log('Broadcast message received:', JSON.stringify(payload, null, 2));
-                const message = payload.payload;
-
-                const { data: profile, error: profileError } = await supabase
-                    .from('profiles')
-                    .select('id, display_name, avatar_url')
-                    .eq('id', message.user_id)
-                    .single();
-
-                if (profileError) {
-                    console.error('Profile fetch error in broadcast:', JSON.stringify(profileError, null, 2));
-                    if (profileError.code === '42501') {
-                        console.log('Permission denied for profiles table in broadcast');
-                    }
+        const channel = supabase.channel(`public:messages:chat_id=eq.${chatId}`)
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${chatId}` },
+                async (payload) => {
+                    const newMessageRaw = payload.new as RawMessage;
+                    const { data: profileData } = await supabase.from('profiles').select('*').eq('id', newMessageRaw.user_id).single();
+                    const formattedMsg = formatMessage({ ...newMessageRaw, profiles: profileData }, user.id);
+                    setMessages(prev => prev.some(m => m.id === formattedMsg.id) ? prev : [...prev, formattedMsg]);
                 }
+            ).subscribe();
 
-                const formattedMessage = {
-                    id: message.id,
-                    fromMe: message.user_id === user.id,
-                    text: message.content,
-                    image_urls: message.image_urls || [],
-                    replyTo: message.reply_to_id
-                        ? messages.find((m) => m.id === message.reply_to_id)?.text
-                        : '',
-                    user: profile || { id: message.user_id, display_name: '알 수 없는 사용자', avatar_url: null },
-                    created_at: message.created_at,
-                };
+        return () => { supabase.removeChannel(channel); };
+    }, [user, chatId]);
 
-                console.log('Formatted message:', JSON.stringify(formattedMessage, null, 2));
-
-                setMessages((prev) => {
-                    if (prev.some((m) => m.id === formattedMessage.id)) {
-                        console.log('Duplicate message ignored:', formattedMessage.id);
-                        return prev;
-                    }
-                    const updatedMessages = [...prev, formattedMessage];
-                    console.log('Updated messages:', JSON.stringify(updatedMessages, null, 2));
-                    setTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                        console.log('Scrolled to end');
-                    }, 100);
-                    return updatedMessages;
-                });
-
-                if (message.user_id === user.id) {
-                    await supabase
-                        .from('chat_participants')
-                        .update({ last_read_at: new Date().toISOString() })
-                        .eq('chat_id', id)
-                        .eq('user_id', user.id);
-                }
-
-                chatEmitter.emit('messageSent', { chat_id: id, user_id: message.user_id });
-            })
-            .subscribe((status, err) => {
-                console.log('Broadcast subscription status:', status, err ? `Error: ${JSON.stringify(err)}` : '');
-                setSubscriptionStatus(status);
-                if (status === 'CLOSED' || status === 'TIMED_OUT') {
-                    console.warn('Broadcast subscription closed or timed out. Reconnecting...');
-                    setTimeout(() => channel.subscribe(), 1000);
-                }
-            });
-
-        return () => {
-            console.log('Cleaning up broadcast subscription');
-            supabase.removeChannel(channel);
-        };
-    }, [user, id, authLoading]);
-
-    const sendMessage = async () => {
-        if (!value.trim() && selectedAssets.length === 0) return;
-
-        try {
-            let imageUrls = [];
-            if (selectedAssets.length > 0) {
-                for (const asset of selectedAssets) {
-                    const response = await fetch(asset.uri);
-                    const blob = await response.blob();
-                    const fileName = `${user.id}/${Date.now()}-${asset.id}.jpg`;
-                    const { error: uploadError } = await supabase.storage
-                        .from('chat_images')
-                        .upload(fileName, blob, { contentType: 'image/jpeg' });
-                    if (uploadError) {
-                        throw new Error(`이미지 업로드 실패: ${uploadError.message}`);
-                    }
-                    const { data: urlData } = supabase.storage.from('chat_images').getPublicUrl(fileName);
-                    imageUrls.push(urlData.publicUrl);
-                }
-            }
-
-            const newMessage = {
-                chat_id: id,
-                user_id: user.id,
-                content: value.trim() || null,
-                image_urls: imageUrls.length > 0 ? imageUrls : null,
-                created_at: new Date().toISOString(),
-            };
-
-            const { data, error: insertError } = await supabase
-                .from('messages')
-                .insert(newMessage)
-                .select()
-                .single();
-
-            if (insertError) {
-                throw new Error(`메시지 전송 실패: ${insertError.message}`);
-            }
-
-            setValue('');
-            setSelectedAssets([]);
-            sheetRef.current?.close();
-        } catch (error) {
-            Toast.show({
-                type: 'error',
-                text1: '메시지 전송 실패',
-                text2: error.message,
-                position: 'top',
-                visibilityTime: 3000,
-            });
+    const handleLaunchCamera = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') { Toast.show({ type: 'error', text1: '카메라 접근 권한이 필요합니다.' }); return; }
+        const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+        if (!result.canceled && result.assets) {
+            setSelectedAssets(result.assets);
+            setTimeout(() => sendMessage(), 100);
         }
     };
+
+    const sendMessage = async () => {
+        if ((!value.trim() && selectedAssets.length === 0) || !user) return;
+        Keyboard.dismiss();
+        const content = value;
+        const assets = [...selectedAssets];
+        setValue('');
+        setSelectedAssets([]);
+        sheetRef.current?.close();
+
+        try {
+            let imageUrls: string[] = [];
+            if (assets.length > 0) {
+                Toast.show({ type: 'info', text1: `이미지 ${assets.length}개 업로드 중...` });
+                const uploadPromises = assets.map(async (asset, index) => {
+                    let uri = asset.uri;
+                    console.log(`Processing asset ${index + 1}:`, uri);
+
+                    // iOS에서 ph:// URI 처리
+                    if (uri.startsWith('ph://')) {
+                        try {
+                            const assetInfo = await MediaLibrary.getAssetInfoAsync(asset.id);
+                            uri = assetInfo.localUri || assetInfo.uri;
+                            console.log(`Converted ph:// URI to:`, uri);
+                            if (!uri) throw new Error(`유효하지 않은 URI: ${asset.id}`);
+                        } catch (error) {
+                            console.error(`Failed to get asset info for ${asset.id}:`, error);
+                            throw new Error(`이미지 정보 로드 실패: ${error.message}`);
+                        }
+                    }
+
+                    // 파일 정보 확인
+                    const fileInfo = await FileSystem.getInfoAsync(uri);
+                    console.log(`File info for asset ${index + 1}:`, fileInfo);
+                    if (!fileInfo.exists || fileInfo.size === 0) {
+                        throw new Error(`파일이 존재하지 않거나 빈 파일입니다: ${asset.id}`);
+                    }
+
+                    // HEIC 파일을 JPEG로 변환
+                    let finalUri = uri;
+                    let finalExtension = uri.split('.').pop()?.toLowerCase() || 'jpg';
+                    if (finalExtension === 'heic') {
+                        try {
+                            const manipulatedImage = await ImageManipulator.manipulateAsync(
+                                uri,
+                                [],
+                                { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+                            );
+                            finalUri = manipulatedImage.uri;
+                            finalExtension = 'jpg';
+                            console.log(`Converted HEIC to JPEG: ${finalUri}`);
+
+                            // 변환된 파일 정보 확인
+                            const convertedFileInfo = await FileSystem.getInfoAsync(finalUri);
+                            console.log(`Converted file info for asset ${index + 1}:`, convertedFileInfo);
+                            if (!convertedFileInfo.exists || convertedFileInfo.size === 0) {
+                                throw new Error(`변환된 JPEG 파일이 존재하지 않거나 빈 파일입니다: ${asset.id}`);
+                            }
+                        } catch (error) {
+                            console.error(`Failed to convert HEIC for ${index + 1}:`, error);
+                            throw new Error(`HEIC 변환 실패: ${error.message}`);
+                        }
+                    }
+
+                    // 파일 읽기 전 지연 (파일 쓰기 완료 보장)
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // 파일을 Base64로 읽기
+                    let fileContent;
+                    try {
+                        fileContent = await FileSystem.readAsStringAsync(finalUri, {
+                            encoding: FileSystem.EncodingType.Base64,
+                        });
+                        console.log(`File content length for asset ${index + 1}:`, fileContent.length);
+                        if (!fileContent || fileContent.length === 0) {
+                            throw new Error(`빈 파일 데이터: ${asset.id}`);
+                        }
+                    } catch (error) {
+                        console.error(`Read error for asset ${index + 1}:`, error);
+                        throw new Error(`파일 읽기 실패: ${error.message}`);
+                    }
+
+                    // Base64를 ArrayBuffer로 변환
+                    const binaryString = atob(fileContent);
+                    const arrayBuffer = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        arrayBuffer[i] = binaryString.charCodeAt(i);
+                    }
+
+                    // MIME 타입 결정
+                    const mimeType = 'image/jpeg';
+
+                    // 파일명 생성
+                    const fileName = `${user.id}/${Date.now()}-${asset.filename || `chat_${index + 1}`}.jpg`;
+
+                    // Supabase에 업로드
+                    const { data, error } = await supabase.storage
+                        .from('chat_images')
+                        .upload(fileName, arrayBuffer, { contentType: mimeType });
+                    if (error) {
+                        console.error(`Upload error for asset ${index + 1}:`, error);
+                        throw error;
+                    }
+                    const publicUrl = supabase.storage.from('chat_images').getPublicUrl(data.path).data.publicUrl;
+                    console.log(`Uploaded asset ${index + 1} URL:`, publicUrl);
+
+                    // 임시 파일 삭제
+                    if (finalUri !== uri) {
+                        await FileSystem.deleteAsync(finalUri, { idempotent: true });
+                    }
+                    return publicUrl;
+                });
+                imageUrls = await Promise.all(uploadPromises);
+            }
+            const { error } = await supabase.from('messages').insert({
+                chat_id: chatId,
+                user_id: user.id,
+                content: content.trim() || null,
+                image_urls: imageUrls.length > 0 ? imageUrls : null
+            });
+            if (error) throw error;
+        } catch (error) {
+            Toast.show({ type: 'error', text1: '메시지 전송 실패', text2: error.message });
+            setValue(content);
+            setSelectedAssets(assets);
+        }
+    };
+
+    const renderMessageItem = ({ item }: { item: FormattedMessage }) => (
+        item.fromMe ? (
+            <View className="items-end mb-3"><View className="bg-neutral-800 rounded-xl px-4 py-3 max-w-[80%]">{item.text && <Text className="text-white text-base">{item.text}</Text>}{item.image_urls?.map((url, index) => <Image key={index} source={{ uri: url }} className="w-48 h-48 mt-2 rounded-lg" resizeMode="cover" />)}</View></View>
+        ) : (
+            <View className="mb-3 flex-row items-start"><Image source={{ uri: item.user?.avatar_url || 'https://via.placeholder.com/40' }} className="w-8 h-8 rounded-full" /><View className="bg-neutral-100 rounded-xl px-4 py-3 max-w-[80%] ml-3"><Text className="text-neutral-900 font-semibold">{item.user?.display_name}</Text>{item.text && <Text className="text-neutral-800 mt-1">{item.text}</Text>}{item.image_urls?.map((url, index) => <Image key={index} source={{ uri: url }} className="w-48 h-48 mt-2 rounded-lg" resizeMode="cover" />)}</View></View>
+        )
+    );
 
     const openGalleryBottomSheet = useCallback(() => {
         sheetRef.current?.snapToIndex(0);
@@ -321,6 +299,13 @@ export default function GroupChatScreen() {
             setSelectedAssets([]);
         }
     }, []);
+
+    const renderBackdrop = useCallback(
+        (props) => (
+            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+        ),
+        []
+    );
 
     const toggleSelectAsset = (asset) => {
         setSelectedAssets((prev) =>
@@ -396,65 +381,10 @@ export default function GroupChatScreen() {
         [selectedAssets, screenWidth]
     );
 
-    const renderMessageItem = ({ item }) => {
-        console.log('Rendering message:', item.id, item.text);
-        return item.fromMe ? (
-            <View className="items-end mb-3">
-                <View className="bg-neutral-800 rounded-xl px-4 py-3 max-w-[80%]">
-                    {item.replyTo && (
-                        <View className="border-l-2 border-orange-400 pl-2 mb-1">
-                            <Text className="text-xs text-orange-400 font-semibold">{item.replyTo}</Text>
-                        </View>
-                    )}
-                    {item.text && <Text className="text-white">{item.text}</Text>}
-                    {item.image_urls?.map((url, index) => (
-                        <Image key={index} source={{ uri: url }} className="w-40 h-40 mt-2 rounded" />
-                    ))}
-                </View>
-            </View>
-        ) : (
-            <View className="mb-3 flex-row items-start">
-                <Image
-                    source={{ uri: item.user?.avatar_url || 'https://picsum.photos/200/300' }}
-                    className="w-8 h-8 rounded-full"
-                />
-                <View className="bg-neutral-100 rounded-xl px-4 py-3 max-w-[80%] ml-3">
-                    <Text className="text-neutral-900 font-semibold">{item.user?.display_name || '알 수 없는 사용자'}</Text>
-                    {item.replyTo && (
-                        <View className="border-l-2 border-orange-400 pl-2 mb-1">
-                            <Text className="text-xs text-orange-400 font-semibold">{item.replyTo}</Text>
-                        </View>
-                    )}
-                    {item.text && <Text className="text-neutral-900">{item.text}</Text>}
-                    {item.image_urls?.map((url, index) => (
-                        <Image key={index} source={{ uri: url }} className="w-40 h-40 mt-2 rounded" />
-                    ))}
-                </View>
-            </View>
-        );
-    };
-
-    const renderBackdrop = useCallback(
-        (props) => (
-            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
-        ),
-        []
-    );
-
-    if (authLoading) {
-        return (
-            <SafeAreaView className="flex-1 bg-white justify-center items-center">
-                <ActivityIndicator size="large" color="#f97316" />
-                <Text className="mt-4 text-neutral-600">인증 로드 중...</Text>
-            </SafeAreaView>
-        );
-    }
-
     if (loading) {
         return (
-            <SafeAreaView className="flex-1 bg-white justify-center items-center">
+            <SafeAreaView className="flex-1 justify-center items-center">
                 <ActivityIndicator size="large" color="#f97316" />
-                <Text className="mt-4 text-neutral-600">채팅방 로드 중...</Text>
             </SafeAreaView>
         );
     }
@@ -495,24 +425,16 @@ export default function GroupChatScreen() {
                 <Text className="text-center pt-6 text-neutral-500">오늘</Text>
                 <FlatList
                     ref={flatListRef}
-                    className="px-4 pt-8"
                     data={messages}
-                    keyExtractor={(item) => item.id}
                     renderItem={renderMessageItem}
-                    onContentSizeChange={() => {
-                        console.log('Content size changed, scrolling to end');
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                    }}
-                    onLayout={() => {
-                        console.log('FlatList layout triggered, scrolling to end');
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                    }}
-                    extraData={messages}
+                    keyExtractor={(item) => item.id.toString()}
+                    contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 32, paddingBottom: 20 }}
+                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                 />
                 <View className="flex-row items-center bg-neutral-100 rounded-full px-5 py-3 mx-4 mb-4">
                     <TouchableOpacity
                         className="bg-orange-500 rounded-full w-9 h-9 items-center justify-center mr-4"
-                        onPress={openGalleryBottomSheet}
+                        onPress={handleLaunchCamera}
                     >
                         <Entypo name="camera" size={16} color="#fff" />
                     </TouchableOpacity>
