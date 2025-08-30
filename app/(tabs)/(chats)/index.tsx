@@ -1,4 +1,3 @@
-// app/(tabs)/(chats)/index.tsx
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import { Link, useFocusEffect } from 'expo-router';
@@ -6,7 +5,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, SafeAreaView, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
-const formatTime = (timeStr) => { /* ... 시간 포맷 함수 ... */ };
+const formatTime = (timeStr) => {
+  if (!timeStr) return '';
+  const date = new Date(timeStr);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return isToday
+    ? `${hours}:${minutes}`
+    : `${date.getMonth() + 1}/${date.getDate()} ${hours}:${minutes}`;
+};
 
 export default function ChatsScreen() {
   const { user } = useAuth();
@@ -19,8 +28,10 @@ export default function ChatsScreen() {
     try {
       const { data, error } = await supabase.rpc('get_user_chats', { p_user_id: user.id });
       if (error) throw error;
+      console.log('Fetched chats:', data);
       setChats(data || []);
     } catch (error) {
+      console.error('Error fetching chats:', error);
       Toast.show({ type: 'error', text1: '채팅 목록 로드 실패', text2: error.message });
     } finally {
       setLoading(false);
@@ -29,13 +40,12 @@ export default function ChatsScreen() {
 
   useFocusEffect(useCallback(() => { fetchChats(); }, [fetchChats]));
 
-  // 실시간 업데이트: 새 메시지가 오면 목록을 다시 불러옴
   useEffect(() => {
     if (!user) return;
     const channel = supabase
       .channel('public:messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
-        // 내가 참여한 채팅방에 새 메시지가 온 경우에만 목록을 새로고침
+        console.log('New message received:', payload);
         const isMyChat = chats.some(chat => chat.chat_id === payload.new.chat_id);
         if (isMyChat) {
           fetchChats();
@@ -46,7 +56,6 @@ export default function ChatsScreen() {
   }, [user, chats, fetchChats]);
 
   const groupChats = chats.filter(c => c.is_group_chat);
-  // const personalChats = chats.filter(c => !c.is_group_chat); // 개인 채팅 로직 추가 가능
 
   return (
     <SafeAreaView className="flex-1 bg-white">
