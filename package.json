@@ -13,6 +13,7 @@
   "dependencies": {
     "@config-plugins/react-native-callkeep": "^11.0.0",
     "@config-plugins/react-native-webrtc": "^12.0.0",
+    "@expo/react-native-action-sheet": "^4.1.1",
     "@expo/vector-icons": "^14.1.0",
     "@gorhom/bottom-sheet": "^5.1.5",
     "@mrakesh0608/react-native-loading-dots": "^1.0.9",
