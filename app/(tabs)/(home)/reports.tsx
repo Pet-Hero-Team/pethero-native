@@ -34,6 +34,7 @@ const fetchReports = async ({ pageParam = 0, sortBy = 'created_at', userLocation
     const params = userLocation ? {
         user_latitude: userLocation.latitude,
         user_longitude: userLocation.longitude,
+        radius_meters: MAX_DISTANCE_KM * 1000 // 5km를 미터(m) 단위로 변환하여 추가
     } : {};
 
     let query;

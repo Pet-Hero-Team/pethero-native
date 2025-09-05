@@ -1,7 +1,7 @@
 import { ShadowViewLight } from '@/components/ShadowViewLight';
 import { RescueItemSkeleton } from '@/constants/skeletions';
 import { supabase } from '@/supabase/supabase';
-import { UserLocation } from '@/utils/calculateDistance';
+import { calculateDistance, UserLocation } from '@/utils/calculateDistance';
 import { formatDistance } from '@/utils/formating';
 import { Fontisto, Ionicons } from '@expo/vector-icons';
 import { useInfiniteQuery } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, SafeAreaView, ScrollView, Text, TextInput, View } from 'react-native';
 
 const PAGE_SIZE = 10;
+const MAX_DISTANCE_KM = 5;
 
 interface Rescue {
     id: string;
@@ -33,37 +34,69 @@ const fetchRescues = async ({ pageParam = 0, sortBy = 'created_at', userLocation
         sortBy = 'created_at';
     }
 
-    let query = supabase.rpc('get_rescues_in_distance', {
-        user_latitude: userLocation?.latitude,
-        user_longitude: userLocation?.longitude,
-    });
+    let query;
 
-    if (searchQuery) {
-        query = query.or(`title.ilike.%${searchQuery}%,address.ilike.%${searchQuery}%`);
+    if (sortBy === 'distance' && userLocation) {
+        // ✅ 새로운 함수 이름으로 변경!
+        query = supabase.rpc('get_rescues_by_radius', {
+            p_user_latitude: userLocation.latitude,
+            p_user_longitude: userLocation.longitude,
+            p_radius_meters: MAX_DISTANCE_KM * 1000,
+            p_search_query: searchQuery,
+            p_page_num: pageParam,
+            p_page_size: PAGE_SIZE
+        });
+    } else {
+        query = supabase.from('rescues').select(`
+            id,
+            title,
+            description,
+            address,
+            created_at,
+            bounty,
+            latitude,
+            longitude,
+            rescues_images:rescues_images!left(url)
+        `);
+
+        if (searchQuery) {
+            query = query.or(`title.ilike.%${searchQuery}%,address.ilike.%${searchQuery}%`);
+        }
+
+        query = query.order('created_at', { ascending: false })
+            .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
     }
 
-    query = query.order(sortBy === 'distance' ? 'distance' : 'created_at', { ascending: sortBy === 'distance' })
-        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
-
     const { data, error } = await query;
+
     if (error) {
+        console.error("Error fetching rescues:", error);
         throw new Error(`구조 요청 조회 실패: ${error.message}`);
     }
 
     return processRescues(data, userLocation, sortBy);
 };
 
+
 const processRescues = (data: any[], userLocation: UserLocation | null, sortBy: string): Rescue[] => {
     const uniqueRescues = new Map<string, Rescue>();
     data.forEach(rescue => {
         if (!uniqueRescues.has(rescue.id)) {
             const image = rescue.image_url || rescue.rescues_images?.[0]?.url || null;
-            const distance = userLocation && rescue.distance != null ? rescue.distance * 1000 : null;
-            console.log('Rescue ID:', rescue.id);
-            console.log('Raw distance (km):', rescue.distance);
-            console.log('Converted distance (m):', distance);
-            console.log('User Location:', userLocation);
-            console.log('Rescue Coordinates:', { latitude: rescue.latitude, longitude: rescue.longitude });
+
+            let distance = null;
+            if (rescue.distance != null) {
+                distance = rescue.distance;
+            }
+            else if (userLocation && rescue.latitude && rescue.longitude) {
+                distance = calculateDistance(
+                    userLocation.latitude,
+                    userLocation.longitude,
+                    rescue.latitude,
+                    rescue.longitude
+                ) * 1000;
+            }
+
             uniqueRescues.set(rescue.id, {
                 id: rescue.id,
                 title: rescue.title,
@@ -276,5 +309,3 @@ export default function RescuesScreen() {
         </SafeAreaView>
     );
 }
-
-
