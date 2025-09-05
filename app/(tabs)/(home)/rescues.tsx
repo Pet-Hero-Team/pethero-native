@@ -33,7 +33,7 @@ const fetchRescues = async ({ pageParam = 0, sortBy = 'created_at', userLocation
         sortBy = 'created_at';
     }
 
-    let query = supabase.rpc('get_rescues_with_distance', {
+    let query = supabase.rpc('get_rescues_in_distance', {
         user_latitude: userLocation?.latitude,
         user_longitude: userLocation?.longitude,
     });
