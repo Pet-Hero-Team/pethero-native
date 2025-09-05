@@ -38,7 +38,7 @@ const fetchReports = async ({ pageParam = 0, sortBy = 'created_at', userLocation
 
     let query;
     if (userLocation && sortBy === 'distance') {
-        query = supabase.rpc('get_reports_with_distance', params);
+        query = supabase.rpc('get_reports_in_radius', params);
     } else {
         query = supabase.from('reports').select(`
             id,
