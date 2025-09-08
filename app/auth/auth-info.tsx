@@ -7,7 +7,8 @@ import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 const ITEM_HEIGHT = 40;
 const VISIBLE_ITEMS = 5;
@@ -16,6 +17,8 @@ const PLACEHOLDER_COUNT = Math.floor(VISIBLE_ITEMS / 2);
 function getDaysInMonth(year, monthIdx) {
     return new Date(year, monthIdx + 1, 0).getDate();
 }
+
+// ----------------- STEP 컴포넌트들 -----------------
 
 function UsernameStep({ control, getValues, errors, trigger }) {
     const [isUsernameFocused, setIsUsernameFocused] = useState(false);
@@ -46,7 +49,7 @@ function UsernameStep({ control, getValues, errors, trigger }) {
                     )}
                 />
                 <View className="flex-row items-center mt-2 justify-end">
-                    <Text className="text-right text-sm text-gray-500">{getValues('username').length}/30</Text>
+                    <Text className="text-right text-sm text-gray-500">{getValues('username')?.length || 0}/30</Text>
                 </View>
                 {errors.username && (
                     <Text className="text-red-500 mt-2">{errors.username.message}</Text>
@@ -85,7 +88,7 @@ function PetNameStep({ control, getValues, errors, trigger }) {
                     )}
                 />
                 <View className="flex-row items-center mt-2 justify-end">
-                    <Text className="text-right text-sm text-gray-500">{getValues('petName').length}/30</Text>
+                    <Text className="text-right text-sm text-gray-500">{getValues('petName')?.length || 0}/30</Text>
                 </View>
                 {errors.petName && (
                     <Text className="text-red-500 mt-2">{errors.petName.message}</Text>
@@ -101,10 +104,6 @@ function ImageUploadStep({ control, setValue, getValues }) {
     useEffect(() => {
         setValue('image', image);
     }, [image, setValue]);
-
-    useEffect(() => {
-        setImage(getValues('image') || null);
-    }, []);
 
     const pickImage = async () => {
         try {
@@ -126,9 +125,7 @@ function ImageUploadStep({ control, setValue, getValues }) {
         }
     };
 
-    const removeImage = () => {
-        setImage(null);
-    };
+    const removeImage = () => setImage(null);
 
     return (
         <View>
@@ -138,24 +135,14 @@ function ImageUploadStep({ control, setValue, getValues }) {
                 {image ? (
                     <View className="w-full p-1">
                         <View className="relative">
-                            <Image
-                                source={{ uri: image }}
-                                className="w-full h-96 rounded-xl"
-                                resizeMode="cover"
-                            />
-                            <TouchableOpacity
-                                className="absolute top-2 right-2 bg-neutral-800 rounded-full p-1"
-                                onPress={removeImage}
-                            >
+                            <Image source={{ uri: image }} className="w-full h-96 rounded-xl" resizeMode="cover" />
+                            <TouchableOpacity className="absolute top-2 right-2 bg-neutral-800 rounded-full p-1" onPress={removeImage}>
                                 <Ionicons name="close" size={16} color="white" />
                             </TouchableOpacity>
                         </View>
                     </View>
                 ) : (
-                    <TouchableOpacity
-                        className="w-full p-1"
-                        onPress={pickImage}
-                    >
+                    <TouchableOpacity className="w-full p-1" onPress={pickImage}>
                         <View className="bg-gray-100 rounded-xl items-center justify-center h-96">
                             <Ionicons name="add" size={24} color="#9ca3af" />
                             <Text className="text-lg text-gray-600">사진 추가</Text>
@@ -171,19 +158,13 @@ function ReportTypeStep({ reportType, setReportType }) {
     return (
         <View className="flex-1">
             <Text className="text-2xl font-semibold">애완동물이 있으신가요?</Text>
-            <Text className="mt-3 mb-8 text-gray-600">타입에 없다면 기타를 선택해주세요</Text>
+            <Text className="mt-3 mb-8 text-gray-600">반려동물 유무에 따라 맞춤형 정보를 제공해드려요.</Text>
             <View className="flex-row mb-6">
-                <TouchableOpacity
-                    onPress={() => setReportType('sighting')}
-                    className={`flex-1 p-4 rounded-l-xl ${reportType === 'sighting' ? 'bg-orange-500' : 'bg-gray-100'}`}
-                >
-                    <Text className={`text-center font-semibold ${reportType === 'sighting' ? 'text-white' : 'text-gray-600'}`}>네 있습니다!</Text>
+                <TouchableOpacity onPress={() => setReportType('sighting')} className={`flex-1 p-4 rounded-l-xl ${reportType === 'sighting' ? 'bg-orange-500' : 'bg-gray-100'}`}>
+                    <Text className={`text-center font-semibold ${reportType === 'sighting' ? 'text-white' : 'text-gray-600'}`}>네, 있어요!</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={() => setReportType('protection')}
-                    className={`flex-1 p-4 rounded-r-xl ${reportType === 'protection' ? 'bg-orange-500' : 'bg-gray-100'}`}
-                >
-                    <Text className={`text-center font-semibold ${reportType === 'protection' ? 'text-white' : 'text-gray-600'}`}>아뇨 없습니다</Text>
+                <TouchableOpacity onPress={() => setReportType('protection')} className={`flex-1 p-4 rounded-r-xl ${reportType === 'protection' ? 'bg-orange-500' : 'bg-gray-100'}`}>
+                    <Text className={`text-center font-semibold ${reportType === 'protection' ? 'text-white' : 'text-gray-600'}`}>아니요, 없어요</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -198,31 +179,66 @@ function CategoryStep({ control, setValue, getValues, errors, trigger }) {
 
     return (
         <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-            <Text className="text-2xl mb-8 font-semibold">어떤 애완동물인가요?</Text>
+            <Text className="text-2xl mb-8 font-semibold">어떤 종류의 반려동물인가요?</Text>
             {PET_OPTIONS.map((option) => (
-                <TouchableOpacity
-                    key={option.value}
-                    className={`mb-4 px-5 py-6 rounded-3xl ${getValues('category') === option.value ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'} border`}
-                    onPress={() => handleCategorySelect(option.value)}
-                >
+                <TouchableOpacity key={option.value} className={`mb-4 px-5 py-6 rounded-3xl ${getValues('category') === option.value ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'} border`} onPress={() => handleCategorySelect(option.value)}>
                     <Text className="text-lg font-semibold">{option.label}</Text>
                 </TouchableOpacity>
             ))}
-            {errors.category && (
-                <Text className="text-red-500 mt-2">{errors.category.message}</Text>
-            )}
+            {errors.category && <Text className="text-red-500 mt-2">{errors.category.message}</Text>}
         </ScrollView>
     );
 }
 
-function BirthdayStep({
-    selectedYear, setSelectedYear,
-    selectedMonth, setSelectedMonth,
-    selectedDay, setSelectedDay,
-    years, months, days,
-    yearRef, monthRef, dayRef,
-    onUnknown, birthdayUnknown
-}) {
+function BreedStep({ control, setValue, getValues, errors, trigger, animalType }) {
+    const [breeds, setBreeds] = useState<{ id: string; breed_name: string }[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchBreeds = async () => {
+            if (!animalType) return;
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('animal_breeds')
+                .select('id, breed_name')
+                .eq('animal_type', animalType);
+
+            if (error) {
+                Toast.show({ type: 'error', text1: '품종 목록을 불러오는데 실패했습니다.' });
+            } else {
+                const mixLabel = animalType === 'dog' ? '믹스견' : '믹스묘';
+                setBreeds([{ id: 'mixed', breed_name: mixLabel }, ...data]);
+            }
+            setLoading(false);
+        };
+        fetchBreeds();
+    }, [animalType]);
+
+    const handleBreedSelect = (breedId: string) => {
+        setValue('breed_id', breedId, { shouldValidate: true });
+        trigger('breed_id');
+    };
+
+    if (loading) return <ActivityIndicator className="mt-10" />;
+
+    return (
+        <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
+            <Text className="text-2xl mb-8 font-semibold">어떤 품종인가요?</Text>
+            {breeds.map((breed) => (
+                <TouchableOpacity
+                    key={breed.id}
+                    className={`mb-4 px-5 py-6 rounded-3xl ${getValues('breed_id') === breed.id ? 'bg-gray-100 border-gray-300' : 'bg-white border-gray-200'} border`}
+                    onPress={() => handleBreedSelect(breed.id)}
+                >
+                    <Text className="text-lg font-semibold">{breed.breed_name}</Text>
+                </TouchableOpacity>
+            ))}
+            {errors.breed_id && <Text className="text-red-500 mt-2">{errors.breed_id.message}</Text>}
+        </ScrollView>
+    );
+}
+
+function BirthdayStep({ selectedYear, setSelectedYear, selectedMonth, setSelectedMonth, selectedDay, setSelectedDay, years, months, days, yearRef, monthRef, dayRef, onUnknown, birthdayUnknown }) {
     return (
         <>
             <Text className="text-2xl font-bold text-neutral-900">반려동물 생일은 언제일까요?</Text>
@@ -231,143 +247,49 @@ function BirthdayStep({
                 {!birthdayUnknown ? (
                     <>
                         <View className="flex-row justify-center items-center mb-16">
-                            <ScrollView
-                                style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }}
-                                showsVerticalScrollIndicator={false}
-                                ref={yearRef}
-                            >
-                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (
-                                    <View key={`year-top-${idx}`} style={{ height: ITEM_HEIGHT }} />
-                                ))}
+                            <ScrollView style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }} showsVerticalScrollIndicator={false} ref={yearRef}>
+                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (<View key={`year-top-${idx}`} style={{ height: ITEM_HEIGHT }} />))}
                                 {years.map((year) => (
-                                    <TouchableOpacity
-                                        key={year}
-                                        onPress={() => {
-                                            setSelectedYear(year);
-                                            yearRef.current && yearRef.current.scrollTo({ y: years.indexOf(year) * ITEM_HEIGHT, animated: true });
-                                        }}
-                                    >
-                                        <Text
-                                            style={{
-                                                height: ITEM_HEIGHT,
-                                                fontSize: 24,
-                                                color: selectedYear === year ? "#f97316" : "#bdbdbd",
-                                                fontWeight: selectedYear === year ? "bold" : "normal",
-                                                textAlign: "center",
-                                                lineHeight: ITEM_HEIGHT,
-                                                minWidth: 80,
-                                            }}
-                                        >
+                                    <TouchableOpacity key={year} onPress={() => { setSelectedYear(year); yearRef.current && yearRef.current.scrollTo({ y: years.indexOf(year) * ITEM_HEIGHT, animated: true }); }}>
+                                        <Text style={{ height: ITEM_HEIGHT, fontSize: 24, color: selectedYear === year ? "#f97316" : "#bdbdbd", fontWeight: selectedYear === year ? "bold" : "normal", textAlign: "center", lineHeight: ITEM_HEIGHT, minWidth: 80 }}>
                                             {year}년
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
-                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (
-                                    <View key={`year-bot-${idx}`} style={{ height: ITEM_HEIGHT }} />
-                                ))}
+                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (<View key={`year-bot-${idx}`} style={{ height: ITEM_HEIGHT }} />))}
                             </ScrollView>
-                            <View
-                                style={{
-                                    width: 1,
-                                    height: ITEM_HEIGHT * VISIBLE_ITEMS - 8,
-                                    backgroundColor: "#e5e7eb",
-                                    marginHorizontal: 8,
-                                    alignSelf: "center",
-                                    opacity: 0.7,
-                                }}
-                            />
-                            <ScrollView
-                                style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }}
-                                showsVerticalScrollIndicator={false}
-                                ref={monthRef}
-                            >
-                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (
-                                    <View key={`month-top-${idx}`} style={{ height: ITEM_HEIGHT }} />
-                                ))}
+                            <View style={{ width: 1, height: ITEM_HEIGHT * VISIBLE_ITEMS - 8, backgroundColor: "#e5e7eb", marginHorizontal: 8, alignSelf: "center", opacity: 0.7 }} />
+                            <ScrollView style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }} showsVerticalScrollIndicator={false} ref={monthRef}>
+                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (<View key={`month-top-${idx}`} style={{ height: ITEM_HEIGHT }} />))}
                                 {months.map((month, idx) => (
-                                    <TouchableOpacity
-                                        key={month}
-                                        onPress={() => {
-                                            setSelectedMonth(idx);
-                                            monthRef.current && monthRef.current.scrollTo({ y: idx * ITEM_HEIGHT, animated: true });
-                                        }}
-                                    >
-                                        <Text
-                                            style={{
-                                                height: ITEM_HEIGHT,
-                                                fontSize: 24,
-                                                color: selectedMonth === idx ? "#f97316" : "#bdbdbd",
-                                                fontWeight: selectedMonth === idx ? "bold" : "normal",
-                                                textAlign: "center",
-                                                lineHeight: ITEM_HEIGHT,
-                                                minWidth: 80,
-                                            }}
-                                        >
+                                    <TouchableOpacity key={month} onPress={() => { setSelectedMonth(idx); monthRef.current && monthRef.current.scrollTo({ y: idx * ITEM_HEIGHT, animated: true }); }}>
+                                        <Text style={{ height: ITEM_HEIGHT, fontSize: 24, color: selectedMonth === idx ? "#f97316" : "#bdbdbd", fontWeight: selectedMonth === idx ? "bold" : "normal", textAlign: "center", lineHeight: ITEM_HEIGHT, minWidth: 80 }}>
                                             {month}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
-                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (
-                                    <View key={`month-bot-${idx}`} style={{ height: ITEM_HEIGHT }} />
-                                ))}
+                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (<View key={`month-bot-${idx}`} style={{ height: ITEM_HEIGHT }} />))}
                             </ScrollView>
-                            <View
-                                style={{
-                                    width: 1,
-                                    height: ITEM_HEIGHT * VISIBLE_ITEMS - 8,
-                                    backgroundColor: "#e5e7eb",
-                                    marginHorizontal: 8,
-                                    alignSelf: "center",
-                                    opacity: 0.7,
-                                }}
-                            />
-                            <ScrollView
-                                style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }}
-                                showsVerticalScrollIndicator={false}
-                                ref={dayRef}
-                            >
-                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (
-                                    <View key={`day-top-${idx}`} style={{ height: ITEM_HEIGHT }} />
-                                ))}
+                            <View style={{ width: 1, height: ITEM_HEIGHT * VISIBLE_ITEMS - 8, backgroundColor: "#e5e7eb", marginHorizontal: 8, alignSelf: "center", opacity: 0.7 }} />
+                            <ScrollView style={{ height: ITEM_HEIGHT * VISIBLE_ITEMS }} showsVerticalScrollIndicator={false} ref={dayRef}>
+                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (<View key={`day-top-${idx}`} style={{ height: ITEM_HEIGHT }} />))}
                                 {days.map((day) => (
-                                    <TouchableOpacity
-                                        key={day}
-                                        onPress={() => {
-                                            setSelectedDay(day);
-                                            dayRef.current && dayRef.current.scrollTo({ y: (day - 1) * ITEM_HEIGHT, animated: true });
-                                        }}
-                                    >
-                                        <Text
-                                            style={{
-                                                height: ITEM_HEIGHT,
-                                                fontSize: 24,
-                                                color: selectedDay === day ? "#f97316" : "#bdbdbd",
-                                                fontWeight: selectedDay === day ? "bold" : "normal",
-                                                textAlign: "center",
-                                                lineHeight: ITEM_HEIGHT,
-                                                minWidth: 80,
-                                            }}
-                                        >
+                                    <TouchableOpacity key={day} onPress={() => { setSelectedDay(day); dayRef.current && dayRef.current.scrollTo({ y: (day - 1) * ITEM_HEIGHT, animated: true }); }}>
+                                        <Text style={{ height: ITEM_HEIGHT, fontSize: 24, color: selectedDay === day ? "#f97316" : "#bdbdbd", fontWeight: selectedDay === day ? "bold" : "normal", textAlign: "center", lineHeight: ITEM_HEIGHT, minWidth: 80 }}>
                                             {String(day).padStart(2, "0")}일
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
-                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (
-                                    <View key={`day-bot-${idx}`} style={{ height: ITEM_HEIGHT }} />
-                                ))}
+                                {Array.from({ length: PLACEHOLDER_COUNT }).map((_, idx) => (<View key={`day-bot-${idx}`} style={{ height: ITEM_HEIGHT }} />))}
                             </ScrollView>
                         </View>
-                        <TouchableOpacity onPress={onUnknown}>
-                            <Text className="text-sm text-neutral-400 underline text-center mb-6">기억나지 않습니다</Text>
-                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onUnknown}><Text className="text-sm text-neutral-400 underline text-center mb-6">기억나지 않습니다</Text></TouchableOpacity>
                     </>
                 ) : (
                     <View style={{ alignItems: 'center', marginTop: 48 }}>
                         <Ionicons name="help-circle-outline" size={48} color="#bdbdbd" style={{ marginBottom: 12 }} />
                         <Text className="text-lg text-gray-500 mb-8 leading-8 text-center">기억이 나지않으신다면{"\n"}이대로 제출하셔도 좋습니다!</Text>
-                        <TouchableOpacity onPress={onUnknown}>
-                            <Text className="text-sm text-neutral-400 underline text-center mb-6">다시 입력하기</Text>
-                        </TouchableOpacity>
+                        <TouchableOpacity onPress={onUnknown}><Text className="text-sm text-neutral-400 underline text-center mb-6">다시 입력하기</Text></TouchableOpacity>
                     </View>
                 )}
             </View>
@@ -376,11 +298,7 @@ function BirthdayStep({
 }
 
 const SubmitButton = ({ disabled, onPress }) => (
-    <TouchableOpacity
-        className={`py-4 rounded-xl flex-1 ${disabled ? 'bg-gray-300' : 'bg-orange-500'}`}
-        disabled={disabled}
-        onPress={onPress}
-    >
+    <TouchableOpacity className={`py-4 rounded-xl flex-1 ${disabled ? 'bg-gray-300' : 'bg-orange-500'}`} disabled={disabled} onPress={onPress}>
         <Text className="text-white font-semibold text-center">제출</Text>
     </TouchableOpacity>
 );
@@ -388,57 +306,41 @@ const SubmitButton = ({ disabled, onPress }) => (
 const useAuth = () => {
     const [user, setUser] = useState(null);
     const [session, setSession] = useState(null);
-
     useEffect(() => {
         const checkAuth = async () => {
-            console.log('Checking auth state in useAuth');
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error || !session || !session.user) {
-                    console.error('useAuth getSession error or no session/user:', error);
-                    setSession(null);
-                    setUser(null);
+                    setSession(null); setUser(null);
                     await SecureStore.deleteItemAsync('profileCompleted');
                     router.replace('/auth');
                     return;
                 }
-                setSession(session);
-                setUser(session.user);
-                console.log('useAuth session found:', { userId: session.user.id });
+                setSession(session); setUser(session.user);
             } catch (error) {
-                console.error('useAuth error:', error);
-                setSession(null);
-                setUser(null);
+                setSession(null); setUser(null);
                 await SecureStore.deleteItemAsync('profileCompleted');
                 router.replace('/auth');
             }
         };
-
         checkAuth();
-
         const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            console.log('useAuth auth state changed:', { event: _event, session: !!session });
             if (!session || !session.user) {
-                console.log('No session or user in useAuth, redirecting to /auth');
-                setSession(null);
-                setUser(null);
+                setSession(null); setUser(null);
                 await SecureStore.deleteItemAsync('profileCompleted');
                 router.replace('/auth');
             } else {
-                setSession(session);
-                setUser(session.user);
+                setSession(session); setUser(session.user);
             }
         });
-
-        return () => {
-            authListener?.subscription.unsubscribe();
-        };
+        return () => { authListener?.subscription.unsubscribe(); };
     }, []);
-
     return { user, session };
 };
 
-export default function ReportScreen() {
+// ----------------- 메인 컴포넌트 -----------------
+
+export default function AuthInfoScreen() {
     const { user, session } = useAuth();
     const today = new Date();
     const initialYear = today.getFullYear();
@@ -458,6 +360,7 @@ export default function ReportScreen() {
             petName: '',
             image: null,
             category: '',
+            breed_id: '',
             birthday: '',
         },
         mode: 'onChange',
@@ -492,6 +395,7 @@ export default function ReportScreen() {
         { name: 'petName', label: '반려동물 이름' },
         { name: 'image', label: '프로필 사진 업로드' },
         { name: 'category', label: '애완동물 종류' },
+        { name: 'breed', label: '품종 선택' },
         { name: 'birthday', label: '생일' },
     ];
 
@@ -504,31 +408,22 @@ export default function ReportScreen() {
 
     const isNextDisabled = () => {
         const currentStepName = steps[currentStep]?.name;
-        if (currentStepName === 'username') {
-            return !getValues('username');
+        if (errors[currentStepName]) return true;
+
+        switch (currentStepName) {
+            case 'username': return !getValues('username');
+            case 'petName': return reportType === 'sighting' && !getValues('petName');
+            case 'category': return !getValues('category');
+            case 'breed': return !getValues('breed_id');
+            case 'birthday': return !birthdayUnknown && (!selectedYear || selectedMonth === null || !selectedDay);
+            default: return false;
         }
-        if (currentStepName === 'petName') {
-            return reportType === 'sighting' && !getValues('petName');
-        }
-        if (currentStepName === 'category') {
-            return !getValues('category');
-        }
-        if (currentStepName === 'birthday' && !birthdayUnknown) {
-            return !selectedYear || selectedMonth === null || !selectedDay;
-        }
-        return false;
     };
 
     const handleNext = async () => {
         const currentStepName = steps[currentStep]?.name;
-        let isValid = true;
-        if (currentStepName === 'username') {
-            isValid = await trigger('username');
-        } else if (currentStepName === 'petName' && reportType === 'sighting') {
-            isValid = await trigger('petName');
-        } else if (currentStepName === 'category') {
-            isValid = await trigger('category');
-        }
+        const isValid = await trigger(currentStepName);
+
         if (isValid) {
             if (currentStepName === 'reportType' && reportType === 'protection') {
                 setCurrentStep(steps.findIndex(step => step.name === 'image'));
@@ -549,93 +444,53 @@ export default function ReportScreen() {
     const onSubmit = async (data) => {
         try {
             if (!session || !user) {
-                console.log('No session or user, redirecting to /auth');
-                Alert.alert('오류', '사용자 인증 정보가 없습니다.');
+                Alert.alert('오류', '사용자 인증 정보가 없습니다. 다시 로그인해주세요.');
                 await SecureStore.deleteItemAsync('profileCompleted');
-                router.push('/auth');
+                router.replace('/auth');
                 return;
             }
-
-            console.log('Submitting profile:', {
-                id: user.id,
-                username: data.username,
-                avatar_url: data.image || null,
-                has_pet: reportType === 'sighting',
-                user_role: 'user',
-            });
-
-            const { data: existingProfile, error: checkError } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('username', data.username)
-                .neq('id', user.id)
-                .single();
-            if (checkError && checkError.code !== 'PGRST116') {
-                throw new Error(`닉네임 확인 실패: ${checkError.message}`);
-            }
-            if (existingProfile) {
-                throw new Error('이미 사용 중인 닉네임입니다.');
-            }
-
-            let birthday = '';
-            if (reportType === 'sighting' && !birthdayUnknown) {
-                const month = String(selectedMonth + 1).padStart(2, "0");
-                const day = String(selectedDay).padStart(2, "0");
-                birthday = `${selectedYear}-${month}-${day}`;
-            } else if (birthdayUnknown) {
-                birthday = '기억나지 않음';
-            }
-
-            const defaultImageUrl = 'https://your-supabase-storage-url/default-profile.png'; // Supabase Storage의 기본 이미지 URL로 교체
-            const avatarUrl = data.image || defaultImageUrl;
 
             const { error: profileError } = await supabase.from('profiles').upsert({
                 id: user.id,
                 username: data.username,
-                avatar_url: avatarUrl,
+                avatar_url: data.image,
                 has_pet: reportType === 'sighting',
                 user_role: 'user',
                 updated_at: new Date().toISOString(),
             });
-            if (profileError) {
-                if (profileError.message.includes('profiles_username_check')) {
-                    throw new Error('닉네임은 한글, 영문, 숫자, 밑줄(_)만 사용 가능하며 3~30자여야 합니다.');
-                }
-                throw new Error(`프로필 생성 실패: ${profileError.message}`);
-            }
+
+            if (profileError) throw new Error(`프로필 업데이트 실패: ${profileError.message}`);
 
             if (reportType === 'sighting') {
-                console.log('Submitting pet:', {
-                    user_id: user.id,
-                    name: data.petName,
-                    category: data.category,
-                    birthday,
-                });
+                let birthday = birthdayUnknown ? '모름' : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+
                 const { error: petError } = await supabase.from('pets').insert({
                     user_id: user.id,
                     name: data.petName,
                     category: data.category,
+                    breed_id: data.breed_id === 'mixed' ? null : data.breed_id,
                     birthday,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
                 });
+
                 if (petError) throw new Error(`반려동물 등록 실패: ${petError.message}`);
             }
 
             await SecureStore.setItemAsync('profileCompleted', 'true');
-            console.log('Profile completed, set profileCompleted to true');
-            router.push('/(tabs)/(home)');
+            router.replace('/(tabs)/(home)');
+
         } catch (error) {
             console.error('Submit error:', error);
-            Alert.alert('제출 실패', '프로필을 저장할 수 없습니다. 다시 시도해주세요.');
-            await SecureStore.deleteItemAsync('profileCompleted');
-            router.push('/auth');
+            Alert.alert('제출 실패', error.message || '프로필을 저장할 수 없습니다. 다시 시도해주세요.');
         }
     };
 
     const renderProgressBar = () => {
-        const totalSteps = reportType === 'protection' ? 3 : 6;
-        const progress = ((currentStep + 1) / totalSteps) * 100;
+        const totalSteps = reportType === 'protection' ? 3 : steps.length;
+        let currentProgressStep = currentStep;
+        if (reportType === 'protection' && currentStep > 1) {
+            currentProgressStep = 2;
+        }
+        const progress = ((currentProgressStep + 1) / totalSteps) * 100;
         return (
             <View className="w-full h-2 bg-gray-200 rounded-full mt-4 mb-6">
                 <View className="h-2 bg-orange-500 rounded-full" style={{ width: `${progress}%` }} />
@@ -647,105 +502,39 @@ export default function ReportScreen() {
         const step = steps[currentStep];
         if (!step) return null;
         switch (step.name) {
-            case 'username':
-                return (
-                    <UsernameStep
-                        control={control}
-                        getValues={getValues}
-                        errors={errors}
-                        trigger={trigger}
-                    />
-                );
-            case 'reportType':
-                return (
-                    <ReportTypeStep
-                        reportType={reportType}
-                        setReportType={setReportType}
-                    />
-                );
-            case 'petName':
-                return reportType === 'sighting' ? (
-                    <PetNameStep
-                        control={control}
-                        getValues={getValues}
-                        errors={errors}
-                        trigger={trigger}
-                    />
-                ) : null;
-            case 'image':
-                return (
-                    <ImageUploadStep
-                        control={control}
-                        setValue={setValue}
-                        getValues={getValues}
-                    />
-                );
-            case 'category':
-                return (
-                    <CategoryStep
-                        control={control}
-                        setValue={setValue}
-                        getValues={getValues}
-                        errors={errors}
-                        trigger={trigger}
-                    />
-                );
-            case 'birthday':
-                return (
-                    <BirthdayStep
-                        selectedYear={selectedYear}
-                        setSelectedYear={setSelectedYear}
-                        selectedMonth={selectedMonth}
-                        setSelectedMonth={setSelectedMonth}
-                        selectedDay={selectedDay}
-                        setSelectedDay={setSelectedDay}
-                        years={years}
-                        months={months}
-                        days={days}
-                        yearRef={yearRef}
-                        monthRef={monthRef}
-                        dayRef={dayRef}
-                        birthdayUnknown={birthdayUnknown}
-                        onUnknown={() => setBirthdayUnknown(!birthdayUnknown)}
-                    />
-                );
-            default:
-                return null;
+            case 'username': return <UsernameStep control={control} getValues={getValues} errors={errors} trigger={trigger} />;
+            case 'reportType': return <ReportTypeStep reportType={reportType} setReportType={setReportType} />;
+            case 'petName': return reportType === 'sighting' ? <PetNameStep control={control} getValues={getValues} errors={errors} trigger={trigger} /> : null;
+            case 'image': return <ImageUploadStep control={control} setValue={setValue} getValues={getValues} />;
+            case 'category': return <CategoryStep control={control} setValue={setValue} getValues={getValues} errors={errors} trigger={trigger} />;
+            case 'breed': return <BreedStep control={control} setValue={setValue} getValues={getValues} errors={errors} trigger={trigger} animalType={getValues('category')} />;
+            case 'birthday': return <BirthdayStep selectedYear={selectedYear} setSelectedYear={setSelectedYear} selectedMonth={selectedMonth} setSelectedMonth={setSelectedMonth} selectedDay={selectedDay} setSelectedDay={setSelectedDay} years={years} months={months} days={days} yearRef={yearRef} monthRef={monthRef} dayRef={dayRef} birthdayUnknown={birthdayUnknown} onUnknown={() => setBirthdayUnknown(!birthdayUnknown)} />;
+            default: return null;
         }
     };
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                className="flex-1 bg-white"
-            >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 bg-white">
                 <View className="flex-1 px-6">
                     {renderProgressBar()}
                     <Text className="text-xl font-bold mb-4 text-gray-400">
                         <Text className="text-gray-800">{currentStep + 1}</Text>
-                        {` / ${reportType === 'protection' ? 3 : 6}`}
+                        {` / ${reportType === 'protection' ? 3 : steps.length}`}
                     </Text>
                     {renderStep()}
                 </View>
                 <View className="px-6 pb-8 bg-white">
                     <View className="flex-row">
                         {currentStep > 0 && (
-                            <TouchableOpacity
-                                className="bg-gray-100 py-4 rounded-xl flex-[2] mr-2"
-                                onPress={handlePrevious}
-                            >
+                            <TouchableOpacity className="bg-gray-100 py-4 rounded-xl flex-[2] mr-2" onPress={handlePrevious}>
                                 <Text className="text-black font-semibold text-center">이전</Text>
                             </TouchableOpacity>
                         )}
                         {isLastStep() ? (
                             <SubmitButton disabled={isNextDisabled()} onPress={handleSubmit(onSubmit)} />
                         ) : (
-                            <TouchableOpacity
-                                className={`py-4 rounded-xl ${isNextDisabled() ? 'bg-gray-300' : 'bg-orange-500'} ${currentStep === 0 ? 'flex-1' : 'flex-[8]'}`}
-                                onPress={handleNext}
-                                disabled={isNextDisabled()}
-                            >
+                            <TouchableOpacity className={`py-4 rounded-xl ${isNextDisabled() ? 'bg-gray-300' : 'bg-orange-500'} ${currentStep === 0 ? 'flex-1' : 'flex-[8]'}`} onPress={handleNext} disabled={isNextDisabled()}>
                                 <Text className="text-white font-semibold text-center">다음</Text>
                             </TouchableOpacity>
                         )}

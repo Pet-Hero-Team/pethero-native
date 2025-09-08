@@ -1,0 +1,9 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2",
+    "@langchain/core/output_parsers": "npm:@langchain/core@0.1.62/output_parsers",
+    "@langchain/core/prompts": "npm:@langchain/core@0.1.62/prompts",
+    "@langchain/anthropic": "npm:@langchain/anthropic@0.1.18",
+    "../_shared/cors.ts": "../_shared/cors.ts"
+  }
+}
