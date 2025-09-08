@@ -46,6 +46,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="(shopping)"
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <>
+              <FontAwesome5 name="shopping-bag" size={21} color={focused ? '#404040' : '#a3a3a3'} />
+              <Text className={`mt-2 text-xs ${focused ? 'text-neutral-700' : 'text-neutral-400'}`}>쇼핑</Text>
+            </>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="(maps)"
         options={{
           tabBarIcon: ({ focused }) => (
@@ -56,6 +67,7 @@ export default function TabLayout() {
           ),
         }}
       />
+
       <Tabs.Screen
         name="(chats)"
         options={{
