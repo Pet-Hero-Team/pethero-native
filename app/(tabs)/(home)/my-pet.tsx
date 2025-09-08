@@ -35,8 +35,7 @@ const fetchMyPetData = async (userId: string) => {
 
     return {
         ...petData,
-        // ⭐️⭐️⭐️ [0]을 제거하여 객체를 그대로 할당하도록 수정 ⭐️⭐️⭐️
-        aiReport: petData.pet_ai_reports || null,
+        aiReport: petData.pet_ai_reports?.[0] || null,
         health_record_count: count || 0,
     };
 };
@@ -110,12 +109,28 @@ export default function MyPetScreen() {
                     <Text className="font-bold text-green-800">🧬 품종 기반 위험 분석</Text>
                     <Text className="mt-2 text-green-900 leading-6">{report.breed_risk_analysis}</Text>
                 </View>
-                {report.record_risk_analysis && report.record_risk_analysis !== '관련 기록 없음' && (
+
+                {/* ⭐️ 상세 관리 팁 섹션 (detailed_analysis_and_tips) ⭐️ */}
+                {report.detailed_analysis_and_tips && report.detailed_analysis_and_tips.length > 0 && (
                     <View className="p-4 bg-yellow-50 rounded-lg mb-4">
-                        <Text className="font-bold text-yellow-800">⚠️ 진료기록 기반 위험 분석</Text>
-                        <Text className="mt-2 text-yellow-900 leading-6">{report.record_risk_analysis}</Text>
+                        <Text className="font-bold text-yellow-800">⚠️ 맞춤 관리 팁</Text>
+                        {report.detailed_analysis_and_tips.map((item, index) => (
+                            <View key={index} className="mt-3">
+                                <Text className="font-semibold text-yellow-900 leading-6"> • {item.topic}: <Text className="font-normal">{item.analysis}</Text></Text>
+                                <Text className="font-normal text-yellow-800 leading-6 mt-1 ml-4">{item.tip}</Text>
+                            </View>
+                        ))}
                     </View>
                 )}
+
+                {/* ⭐️ 건강검진 추천 섹션 (checkup_recommendation) ⭐️ */}
+                {report.checkup_recommendation && (
+                    <View className="p-4 bg-indigo-50 rounded-lg mb-4">
+                        <Text className="font-bold text-indigo-800">🗓️ 정기검진 추천</Text>
+                        <Text className="mt-2 text-indigo-900 leading-6">{report.checkup_recommendation}</Text>
+                    </View>
+                )}
+
                 <View className="p-4 bg-purple-50 rounded-lg mb-4">
                     <Text className="font-bold text-purple-800">💊 추천 영양제 성분</Text>
                     {report.supplement_recommendation?.map((item, index) => (
@@ -170,7 +185,7 @@ export default function MyPetScreen() {
                         <Pressable
                             className="bg-slate-700 rounded-lg py-2 mt-4"
                             onPress={() => router.push({
-                                pathname: `/pets/${pet.id}/add-record`,
+                                pathname: `/(tabs)/home/pets/${pet.id}/add-record`,
                                 params: { animalType: pet.category }
                             })}
                         >

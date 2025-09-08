@@ -1,5 +1,3 @@
-// app/(tabs)/home/pets/[id]/add-record.tsx
-
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/supabase/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,7 +54,6 @@ export default function AddHealthRecordScreen() {
     const addRecordMutation = useMutation({
         mutationFn: async (formData: any) => {
             if (!user || !petId) throw new Error("사용자 또는 반려동물 정보가 없습니다.");
-
             const { error } = await supabase.from('health_records').insert({
                 pet_id: petId,
                 user_id: user.id,
@@ -65,21 +62,24 @@ export default function AddHealthRecordScreen() {
                 disease_category_id: formData.disease_category_id,
                 doctor_opinion: formData.doctor_opinion,
             });
-
             if (error) throw error;
         },
         onSuccess: () => {
             Toast.show({ type: 'success', text1: '진료기록이 추가되었습니다.' });
-            queryClient.invalidateQueries({ queryKey: ['myPetData', user?.id] });
 
-            // ⭐️⭐️⭐️ Edge Function이 알아들을 수 있는 올바른 데이터 구조로 수정 ⭐️⭐️⭐️
+            // ⭐️ 1. UI 즉시 업데이트를 위해 캐시를 'pending' 상태로 미리 변경
+            queryClient.setQueryData(['myPetData', user?.id], (oldData: any) => {
+                if (!oldData) return oldData;
+                return {
+                    ...oldData,
+                    aiReport: { ...(oldData.aiReport || {}), status: 'pending' },
+                    health_record_count: (oldData.health_record_count || 0) + 1,
+                };
+            });
+
+            // 2. 백그라운드에서 AI 리포트 생성을 요청
             supabase.functions.invoke('getPetAiReport', {
-                body: {
-                    record: { // Edge Function이 예상하는 'record' 객체로 감싸서 보냅니다.
-                        pet_id: petId,
-                        user_id: user.id
-                    }
-                }
+                body: { record: { pet_id: petId, user_id: user.id } }
             })
                 .then(({ error }) => {
                     if (error) {
@@ -88,6 +88,8 @@ export default function AddHealthRecordScreen() {
                     } else {
                         console.log("AI report generation triggered successfully.");
                     }
+                    // 3. AI 작업이 끝나면, MyPetScreen의 데이터를 최종적으로 다시 불러옵니다.
+                    queryClient.invalidateQueries({ queryKey: ['myPetData', user?.id] });
                 });
 
             router.back();
