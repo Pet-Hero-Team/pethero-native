@@ -35,7 +35,8 @@ const fetchMyPetData = async (userId: string) => {
 
     return {
         ...petData,
-        aiReport: petData.pet_ai_reports?.[0] || null,
+        // ⭐️⭐️⭐️ [0]을 제거하여 객체를 그대로 할당하도록 최종 수정 ⭐️⭐️⭐️
+        aiReport: petData.pet_ai_reports || null,
         health_record_count: count || 0,
     };
 };
@@ -110,7 +111,6 @@ export default function MyPetScreen() {
                     <Text className="mt-2 text-green-900 leading-6">{report.breed_risk_analysis}</Text>
                 </View>
 
-                {/* ⭐️ 상세 관리 팁 섹션 (detailed_analysis_and_tips) ⭐️ */}
                 {report.detailed_analysis_and_tips && report.detailed_analysis_and_tips.length > 0 && (
                     <View className="p-4 bg-yellow-50 rounded-lg mb-4">
                         <Text className="font-bold text-yellow-800">⚠️ 맞춤 관리 팁</Text>
@@ -123,7 +123,6 @@ export default function MyPetScreen() {
                     </View>
                 )}
 
-                {/* ⭐️ 건강검진 추천 섹션 (checkup_recommendation) ⭐️ */}
                 {report.checkup_recommendation && (
                     <View className="p-4 bg-indigo-50 rounded-lg mb-4">
                         <Text className="font-bold text-indigo-800">🗓️ 정기검진 추천</Text>
@@ -201,4 +200,3 @@ export default function MyPetScreen() {
         </SafeAreaView>
     );
 }
-
