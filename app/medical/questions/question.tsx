@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const FormSection = ({ activeField, control, setValue, getValues, errors, trigger }) => {
     const [isTitleFocused, setIsTitleFocused] = useState(false);
@@ -143,15 +143,11 @@ const ImageUploadSection = ({ control, setValue, getValues }) => {
         setValue('images', images);
     }, [images, setValue]);
 
-    useEffect(() => {
-        setImages(getValues('images') || []);
-    }, []);
-
     const pickImage = async () => {
         try {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') {
-                alert('갤러리 접근 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
+                Alert.alert('권한 필요', '갤러리 접근 권한이 필요합니다. 설정에서 권한을 허용해주세요.');
                 return;
             }
 
@@ -166,13 +162,13 @@ const ImageUploadSection = ({ control, setValue, getValues }) => {
                 const newImages = result.assets.map((asset) => asset.uri);
                 const updatedImages = [...images, ...newImages].slice(0, 5);
                 if (newImages.length + images.length > 5) {
-                    alert('최대 5장까지 업로드할 수 있습니다.');
+                    Alert.alert('업로드 제한', '최대 5장까지 업로드할 수 있습니다.');
                 }
                 setImages(updatedImages);
             }
         } catch (error) {
             console.error('이미지 선택 오류:', error);
-            alert('이미지 선택 중 오류가 발생했습니다.');
+            Alert.alert('오류', '이미지 선택 중 오류가 발생했습니다.');
         }
     };
 
@@ -251,53 +247,61 @@ export default function VetQuestionScreen() {
         { name: 'images', label: '이미지 업로드' },
     ];
 
+    // ⭐️⭐️⭐️ onSubmit 함수를 새로운 DB 구조에 맞게 전체 수정 ⭐️⭐️⭐️
     const onSubmit = async (data) => {
         try {
-
-            const { data: diseaseTag, error: tagError } = await supabase
-                .from('disease_tags')
-                .select('id')
-                .eq('tag_name', data.treatment)
-                .single();
-
-            if (tagError || !diseaseTag) {
-                alert('질병 태그를 찾을 수 없습니다.');
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert('오류', '로그인 정보가 필요합니다.');
                 return;
             }
 
+            // 1. 선택된 treatment(예: 'skin') 값으로 disease_categories 테이블에서 ID를 찾습니다.
+            const { data: categoryData, error: categoryError } = await supabase
+                .from('disease_categories')
+                .select('id')
+                .eq('tag_value', data.treatment)
+                .single();
 
+            if (categoryError || !categoryData) {
+                Alert.alert('오류', '선택한 진료 항목을 찾을 수 없습니다.');
+                return;
+            }
+
+            // 2. pet_questions 테이블에 질문을 저장합니다.
             const { data: questionData, error: questionError } = await supabase
                 .from('pet_questions')
                 .insert({
-                    user_id: (await supabase.auth.getUser()).data.user?.id,
+                    user_id: user.id,
                     title: data.title,
                     description: data.details,
                     animal_type: data.petType,
-                    created_at: new Date().toISOString(),
                 })
                 .select('id')
                 .single();
 
             if (questionError || !questionData) {
-                alert('질문 저장 중 오류가 발생했습니다.');
+                Alert.alert('오류', '질문 저장 중 오류가 발생했습니다.');
                 return;
             }
 
-
+            // 3. 새로 만든 pet_question_categories 테이블에 질문과 카테고리를 연결합니다.
             const { error: tagLinkError } = await supabase
-                .from('pet_question_disease_tags')
+                .from('pet_question_categories')
                 .insert({
-                    pet_question_id: questionData.id,
-                    disease_tag_id: diseaseTag.id,
+                    question_id: questionData.id,
+                    category_id: categoryData.id,
                 });
 
             if (tagLinkError) {
-                alert('질병 태그 연결 중 오류가 발생했습니다.');
+                Alert.alert('오류', '질문과 진료 항목 연결 중 오류가 발생했습니다.');
                 return;
             }
 
-
+            // 4. 이미지가 있다면 pet_question_images 테이블에 저장합니다.
             if (data.images.length > 0) {
+                // TODO: 실제로는 이미지를 Supabase Storage에 업로드하고 그 URL을 저장해야 합니다.
+                // 현재는 로컬 URI를 그대로 저장하지만, 실제 서비스에서는 작동하지 않습니다.
                 const imageInserts = data.images.map((uri) => ({
                     pet_question_id: questionData.id,
                     url: uri,
@@ -307,52 +311,32 @@ export default function VetQuestionScreen() {
                     .insert(imageInserts);
 
                 if (imageError) {
-                    alert('이미지 저장 중 오류가 발생했습니다.');
+                    Alert.alert('오류', '이미지 저장 중 오류가 발생했습니다.');
                     return;
                 }
             }
-
 
             setSubmittedQuestionId(questionData.id);
             setIsSubmitted(true);
             reset();
         } catch (error) {
             console.error('제출 오류:', error);
-            alert('질문 제출 중 오류가 발생했습니다.');
+            Alert.alert('오류', '질문 제출 중 오류가 발생했습니다.');
         }
     };
 
     const isNextDisabled = () => {
         const currentStepName = steps[currentStep]?.name;
-        if (currentStepName === 'petType') {
-            return !getValues('petType');
-        }
-        if (currentStepName === 'treatment') {
-            return !getValues('treatment');
-        }
-        if (currentStepName === 'title') {
-            return !getValues('title');
-        }
-        if (currentStepName === 'details') {
-            return !getValues('details');
-        }
+        if (currentStepName === 'petType') return !getValues('petType');
+        if (currentStepName === 'treatment') return !getValues('treatment');
+        if (currentStepName === 'title') return !getValues('title');
+        if (currentStepName === 'details') return !getValues('details');
         return false;
     };
 
     const handleNext = async () => {
         const currentStepName = steps[currentStep]?.name;
-        let isValid = true;
-
-        if (currentStepName === 'petType') {
-            isValid = await trigger('petType');
-        } else if (currentStepName === 'treatment') {
-            isValid = await trigger('treatment');
-        } else if (currentStepName === 'title') {
-            isValid = await trigger('title');
-        } else if (currentStepName === 'details') {
-            isValid = await trigger('details');
-        }
-
+        const isValid = await trigger(currentStepName);
         if (isValid) {
             setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1));
         }

@@ -7,6 +7,7 @@ import { Link } from 'expo-router';
 import { Image, Pressable, SafeAreaView, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import SkeletonPlaceholder from 'react-native-skeleton-placeholder';
 
+// ⭐️⭐️⭐️ 질문에 연결된 질병 태그(disease_categories)를 함께 조회하도록 수정 ⭐️⭐️⭐️
 const fetchQuestions = async () => {
     const { data, error } = await supabase
         .from('pet_questions')
@@ -17,8 +18,8 @@ const fetchQuestions = async () => {
             animal_type,
             created_at,
             pet_question_images (url),
-            pet_question_disease_tags (
-                disease_tags (tag_name)
+            pet_question_categories (
+                disease_categories (name)
             )
         `)
         .order('created_at', { ascending: false })
@@ -33,7 +34,7 @@ const fetchQuestions = async () => {
         animal_type: getAnimalTypeLabel(question.animal_type),
         created_at: question.created_at,
         image: question.pet_question_images?.[0]?.url || null,
-        disease_tag: getTreatmentLabel(question.pet_question_disease_tags?.[0]?.disease_tags?.tag_name || '미지정'),
+        disease_tag: getTreatmentLabel(question.pet_question_categories?.[0]?.disease_categories?.name || '기타'),
     }));
 };
 
@@ -53,11 +54,7 @@ const fetchNews = async () => {
 
 const QuestionItemSkeleton = () => {
     return (
-        <SkeletonPlaceholder
-            backgroundColor="#e5e7eb"
-            highlightColor="#f3f4f6"
-            speed={1000}
-        >
+        <SkeletonPlaceholder backgroundColor="#e5e7eb" highlightColor="#f3f4f6" speed={1000}>
             <View style={{ width: '100%', paddingVertical: 32, paddingHorizontal: 24, borderBottomWidth: 1, borderColor: '#f3f4f6' }}>
                 <View style={{ width: '100%', height: 20, borderRadius: 4, marginBottom: 8 }} />
                 <View style={{ width: '100%', height: 14, borderRadius: 4, marginBottom: 4 }} />
@@ -73,11 +70,7 @@ const QuestionItemSkeleton = () => {
 
 const NewsItemSkeleton = () => {
     return (
-        <SkeletonPlaceholder
-            backgroundColor="#e5e7eb"
-            highlightColor="#f3f4f6"
-            speed={1000}
-        >
+        <SkeletonPlaceholder backgroundColor="#e5e7eb" highlightColor="#f3f4f6" speed={1000}>
             <View style={{ width: 220, marginRight: 16 }}>
                 <View style={{ width: '100%', height: 160, borderRadius: 8 }} />
                 <View style={{ width: '100%', height: 20, borderRadius: 4, marginTop: 12 }} />
@@ -162,9 +155,9 @@ export default function MedicalScreen() {
                             ))}
                         </View>
                     ) : errorQuestions ? (
-                        <Text className="text-red-500 text-center">오류: {(errorQuestions as Error).message}</Text>
+                        <Text className="text-red-500 text-center py-8">오류: {(errorQuestions as Error).message}</Text>
                     ) : questions.length === 0 ? (
-                        <Text className="text-neutral-600 text-center">질문이 없습니다.</Text>
+                        <Text className="text-neutral-600 text-center py-8">질문이 없습니다.</Text>
                     ) : (
                         questions.map((item) => (
                             <Link href={`/medical/questions/${item.id}`} key={item.id} asChild>
@@ -177,8 +170,14 @@ export default function MedicalScreen() {
                                             </Text>
                                         </View>
                                         <View className="flex-row items-center px-6 pt-4 justify-between">
-                                            <View className="bg-neutral-100 py-2 px-3 rounded-lg">
-                                                <Text className="text-sm font-semibold text-neutral-600">{item.disease_tag}</Text>
+                                            <View className="flex-row">
+                                                <View className="bg-neutral-100 py-2 px-3 rounded-lg mr-2">
+                                                    <Text className="text-sm font-semibold text-neutral-600">{item.animal_type}</Text>
+                                                </View>
+                                                {/* ⭐️⭐️⭐️ 여기에 질병 태그를 표시합니다 ⭐️⭐️⭐️ */}
+                                                <View className="bg-neutral-100 py-2 px-3 rounded-lg">
+                                                    <Text className="text-sm font-semibold text-neutral-600">{item.disease_tag}</Text>
+                                                </View>
                                             </View>
                                             <Text className="text-sm text-neutral-600">{formatTimeAgo(item.created_at)}</Text>
                                         </View>
@@ -225,16 +224,14 @@ export default function MedicalScreen() {
                                 <Link href={`/medical/news/${item.id}`} key={item.id} asChild>
                                     <Pressable>
                                         <View
-                                            style={{
-                                                width: CARD_WIDTH,
-                                            }}
+                                            style={{ width: CARD_WIDTH }}
                                             className="rounded-2xl relative"
                                         >
                                             <View className="absolute left-2 top-2 bg-neutral-700 rounded-full px-2 py-1 z-10">
                                                 <Text className="text-xs text-white font-bold">{item.type}</Text>
                                             </View>
                                             <Image
-                                                source={{ uri: item.main_image_url }}
+                                                source={{ uri: item.main_image_url || 'https://via.placeholder.com/220x160' }}
                                                 style={{ width: CARD_WIDTH, height: 160 }}
                                                 className="rounded-lg"
                                                 resizeMode="cover"

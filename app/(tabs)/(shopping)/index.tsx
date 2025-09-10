@@ -1,30 +1,75 @@
 import { ShadowView } from '@/components/ShadowView';
+import { supabase } from '@/supabase/supabase';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import React from 'react';
-import { ActivityIndicator, Image, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, SafeAreaView, Text, View } from 'react-native';
 
-// --- 임시 데이터 ---
-const DUMMY_PRODUCTS = [
-    { id: '1', name: '튼튼 관절 영양제', price: 25000, image_url: 'https://lythjphzcucyhjobjbcq.supabase.co/storage/v1/object/public/rescues/dog_supplement.png', description: '슬개골과 관절 건강에 도움을 줍니다.' },
-    { id: '2', name: '반짝 피부 오메가-3', price: 22000, image_url: 'https://lythjphzcucyhjobjbcq.supabase.co/storage/v1/object/public/rescues/dog_supplement.png', description: '윤기나는 피모를 만들어보세요.' },
-    { id: '3', name: '튼튼 캥거루 뼈다귀', price: 8000, image_url: 'https://lythjphzcucyhjobjbcq.supabase.co/storage/v1/object/public/rescues/dog_running.png', description: '스트레스 해소와 치석 제거에 효과적입니다.' }
-];
+const PAGE_SIZE = 10; // 한 번에 불러올 상품 개수
+
+// Supabase에서 상품 목록을 '페이지' 단위로 불러오는 함수
+const fetchProducts = async ({ pageParam = 0 }) => {
+    const from = pageParam * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .range(from, to)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+    return { data, nextPage: data.length === PAGE_SIZE ? pageParam + 1 : undefined };
+};
 
 const ProductCard = ({ product }) => (
-    <ShadowView className="bg-white rounded-xl p-4 mb-4">
-        <Image source={{ uri: product.image_url }} className="w-full h-32 rounded-lg" resizeMode="cover" />
-        <Text className="text-lg font-bold mt-3">{product.name}</Text>
-        <Text className="text-neutral-500 mt-1">{product.description}</Text>
-        <Text className="text-xl font-bold text-right mt-2">{product.price.toLocaleString()}원</Text>
-    </ShadowView>
+    <Pressable className="w-1/2 p-2">
+        <ShadowView className="bg-white rounded-xl overflow-hidden">
+            <Image
+                source={{ uri: product.image_url || 'https://via.placeholder.com/150' }}
+                className="w-full h-40"
+                resizeMode="cover"
+            />
+            <View className="p-3">
+                <Text className="text-sm text-neutral-500" numberOfLines={1}>{product.description}</Text>
+                <Text className="text-base font-bold text-neutral-800 mt-1" numberOfLines={2}>{product.name}</Text>
+                {/* TODO: 나중에 할인율, 별점 등의 데이터를 추가할 수 있습니다. */}
+                <Text className="text-lg font-extrabold text-neutral-900 text-right mt-2">{product.price.toLocaleString()}원</Text>
+            </View>
+        </ShadowView>
+    </Pressable>
 );
 
 export default function ShoppingScreen() {
-    const isLoading = false;
-    const products = DUMMY_PRODUCTS;
-    const recommendedProducts = [DUMMY_PRODUCTS[2]];
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        error,
+    } = useInfiniteQuery({
+        queryKey: ['products'],
+        queryFn: fetchProducts,
+        initialPageParam: 0,
+        getNextPageParam: (lastPage) => lastPage.nextPage,
+    });
+
+    const products = data?.pages.flatMap(page => page.data) ?? [];
+
+    const loadMore = () => {
+        if (hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
+        }
+    };
 
     if (isLoading) {
         return <SafeAreaView className="flex-1 justify-center items-center"><ActivityIndicator size="large" /></SafeAreaView>;
+    }
+
+    if (error) {
+        return <SafeAreaView className="flex-1 justify-center items-center"><Text>오류가 발생했습니다: {error.message}</Text></SafeAreaView>;
     }
 
     return (
@@ -33,23 +78,16 @@ export default function ShoppingScreen() {
                 <Text className="text-lg font-bold">맞춤 스토어</Text>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: 16 }}>
-                <View className="mb-8">
-                    <Text className="text-xl font-bold text-neutral-800 mb-4">포메라니안 친구들이 많이 찾아요 👀</Text>
-                    {recommendedProducts.map(product => (
-                        <ProductCard key={product.id} product={product} />
-                    ))}
-                </View>
-
-                <View className="w-full h-px bg-gray-200 my-4" />
-
-                <View>
-                    <Text className="text-xl font-bold text-neutral-800 mb-4">전체 상품 둘러보기</Text>
-                    {products.map(product => (
-                        <ProductCard key={product.id} product={product} />
-                    ))}
-                </View>
-            </ScrollView>
+            <FlatList
+                data={products}
+                renderItem={({ item }) => <ProductCard product={item} />}
+                keyExtractor={item => item.id}
+                numColumns={2} // ⭐️ 2열 그리드 레이아웃 설정
+                contentContainerStyle={{ padding: 6 }}
+                onEndReached={loadMore} // ⭐️ 스크롤이 끝에 닿으면 다음 페이지 로드
+                onEndReachedThreshold={0.5}
+                ListFooterComponent={isFetchingNextPage ? <ActivityIndicator size="large" className="my-4" /> : null}
+            />
         </SafeAreaView>
     );
 }
