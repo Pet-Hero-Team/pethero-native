@@ -18,7 +18,6 @@ function getDaysInMonth(year, monthIdx) {
     return new Date(year, monthIdx + 1, 0).getDate();
 }
 
-// ----------------- STEP 컴포넌트들 -----------------
 
 function UsernameStep({ control, getValues, errors, trigger }) {
     const [isUsernameFocused, setIsUsernameFocused] = useState(false);

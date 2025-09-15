@@ -18,7 +18,7 @@ const fetchReports = async () => {
       id,
       title,
       description,
-      address,
+      address,s
       created_at,
       reports_images (url)
     `)
